@@ -1,0 +1,9 @@
+# FastAPI + server (bundles uvicorn, pydantic, starlette)
+fastapi[standard]==0.136.1
+
+# Database
+sqlalchemy==2.0.50
+psycopg2-binary==2.9.9
+
+# Config
+python-dotenv==1.0.1

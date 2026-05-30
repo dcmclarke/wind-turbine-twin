@@ -1,15 +1,28 @@
-import pandas as pd
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from pathlib import Path
+# TODO: import & include routes once app/routes.py built
+# from app.routes import router
+# app.include_router(router)
 
-BASE_DIR = Path(__file__).parent.parent
-df = pd.read_csv(BASE_DIR / 'data' / 'T1.csv')
+app = FastAPI(
+    title="Wind Turbine Digital Twin API",
+    description="Real-time monitoring for a simulated wind turbine",
+    version="0.1.0"
+)
 
-print(f"Rows: {len(df)}")
-print(f"Columns: {len(df.columns)}")
-print(df.head(10))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# first look at core columns
-print("\nSample performance ratio calculation:")
-df['performance'] = df['LV ActivePower (kW)'] / df['Theoretical_Power_Curve (KWh)']
-print(df[['Date/Time', 'Wind Speed (m/s)', 'LV ActivePower (kW)', 'Theoretical_Power_Curve (KWh)', 'performance']].head(10))
+@app.get("/")
+async def root():
+    return {"message": "Wind Turbine Digital Twin API is running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
