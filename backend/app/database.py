@@ -8,23 +8,33 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
-# Create db engine (the connection)
-engine = create_engine(DATABASE_URL)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True #validates connections before use
+    )
 
-# SessionLocal is factory for creating db sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
-    """Create tables in the database"""
+    """Create all tables if they don't exist yet."""
     Base.metadata.create_all(bind=engine)
 
 def get_db():
     """
-    Dependency function - FastAPI calls this to get a DB session per request.
-    Yields a session, then closes it when the request is done.
+    Dependency: FastAPI calls this to get a DB session per request.
+    Yields a session, closes it when request is done.
     """
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+

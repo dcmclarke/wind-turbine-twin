@@ -1,0 +1,31 @@
+services:
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: windturbine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Set automatically by docker-compose - no local .env needed when using Docker
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/windturbine
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
