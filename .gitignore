@@ -21,3 +21,11 @@ node_modules/
 # Database
 *.db
 *.sqlite
+
+# HDF5 data files - gigabytes, download separately from Zenodo
+*.hdf5
+*.h5
+data/T1.csv
+
+# Jupyter
+.ipynb_checkpoints/

@@ -49,27 +49,43 @@
 
 ---
 
-## 4. Simplified Physics Model
+## 4. Simplified Physics Model (E-82 Simulation)
+
+**Status:** Superseded by Decision 5
+**Context:** Originally modelled power output from a simulated Enercon E-82
+(2MW, 82m rotor) using the Betz formula.
+
+**Why superseded:** The project pivoted to ingesting real SCADA data from
+the ETH Zurich Aventa AV-7 research turbine. Simulating power output from
+a completely different turbine made the icing detector's power ratio
+calculation meaningless — expected power from an E-82 model compared
+against actual power from a 7kW AV-7 produces nonsense ratios.
+
+---
+
+## 5. Data-Derived Power Curve (AV-7)
 
 **Status:** Accepted
-**Context:** Needed to simulate turbine power output from wind speed in a way that is realistic enough to drive a monitoring dashboard, but not a full‑fidelity turbine model.
+**Context:** Need an expected power curve to calculate power ratio for
+icing detection. The ratio actual/expected is the primary detection signal.
 
-**Decision:** A simplified power curve with four distinct operating regions, based on the Enercon E‑82 (82 m rotor, 2 MW) specification.
+**Decision:** Fit a parametric curve to the AV-7's normal operation SCADA
+data rather than using manufacturer constants or the Betz formula alone.
 
-**Why not the pure Betz formula:**
-The pure Betz formula allows power to climb indefinitely with wind speed, which is physically impossible – real turbines cap output at their nameplate rating because the generator and gearbox are designed for a maximum power. Above rated wind speed, the blades actively pitch to shed excess wind and maintain constant output.
+**AV-7 physical parameters (from ETH Zurich documentation):**
 
-**Implemented regions:**
-
-- Below cut‑in (3 m/s): **0 W** – not enough wind to overcome friction.
-- Cut‑in to rated (3‑12 m/s): **Cubic ramp** using the Betz formula P = 0.5 × ρ × A × Cp × v³.
-- At or above rated (12 m/s): **Fixed at 2 MW** – the turbine’s nameplate capacity.
-- Above cut‑out (25 m/s): **0 W** – safety shutdown.
+- Rated power: 7,000 W
+- Cut-in speed: 2 m/s
+- Cut-off speed: 14 m/s
+- Rotor diameter: 12.8 m
+- Max RPM: 63
 
 **Consequences:**
 
-- Captures the four critical behaviours of a real power curve: cut‑in, cubic growth, rated cap, cut‑out.
-- The rated power is a fixed design parameter, not derived from the formula – exactly how manufacturers specify turbines.
-- A constant \( C_p \) is used as a simplification; a real turbine’s \( C_p \) varies with tip‑speed ratio. This is acknowledged and can be replaced with an empirical power curve from `windpowerlib` later without affecting the API or database.
-- The model is trivially explainable and produces visually correct charts for the dashboard.
-- Reference: [Enercon E‑82 power curve](https://en.wind-turbine-models.com/turbines/317-enercon-e-82-2.000)
+- Expected power values are derived from the actual turbine's behaviour,
+  not a theoretical model of a different machine.
+- Cut-in and rated speed are identified from data, not assumed.
+- The fitted coefficients are hardcoded after exploration in
+  ingestion/explore.ipynb — reproducible and auditable.
+- Limitation: fitted to one dataset from one turbine. Generalisation
+  to other turbines requires recalibration.

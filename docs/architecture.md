@@ -4,33 +4,42 @@
 
 ```mermaid
 flowchart LR
-    A[Simulated Sensor\nPython script] -->|POST /api/telemetry| B[FastAPI Backend]
+    A[AV-7 HDF5 Dataset\nETH Zurich] -->|replay.py| B[FastAPI Backend]
+    M[MQTT Broker\nMosquitto] -->|subscribe| B
     B -->|writes| C[(PostgreSQL)]
     C -->|reads| B
-    B -->|GET /api/telemetry/latest\nGET /api/telemetry/history| D[React Dashboard]
+    B -->|GET /api/telemetry/history\nGET /api/icing/status\nGET /api/icing/history| D[React Dashboard]
     D -->|polls every 2s| B
 ```
 
 ## Components
 
-| Component        | Technology       | Responsibility                                            |
-| ---------------- | ---------------- | --------------------------------------------------------- |
-| Sensor simulator | Python class     | Generate wind_speed, calculate power via Betz formula     |
-| API              | FastAPI          | Receive telemetry, serve readings, validate with Pydantic |
-| Database         | PostgreSQL       | Store time-series readings with timestamp index           |
-| Dashboard        | React + Recharts | Poll API every 2s, display live power curve + alerts      |
+| Component        | Technology         | Responsibility                                  |
+| ---------------- | ------------------ | ----------------------------------------------- |
+| Ingestion script | Python + h5py      | Replay AV-7 HDF5 data row by row to API         |
+| MQTT subscriber  | Python + paho-mqtt | Accept live sensor data via MQTT protocol       |
+| Icing detector   | Python             | IEA T19 power ratio method + temperature gate   |
+| API              | FastAPI            | Receive telemetry, run detector, serve readings |
+| Database         | PostgreSQL         | Store readings and icing events with timestamps |
+| Dashboard        | React + Recharts   | Live power ratio chart, icing alerts, event log |
 
 ## API Endpoints
 
-| Method | Endpoint                 | Purpose                   |
-| ------ | ------------------------ | ------------------------- |
-| POST   | `/api/telemetry`         | Ingest sensor reading     |
-| GET    | `/api/telemetry/latest`  | Current turbine state     |
-| GET    | `/api/telemetry/history` | Last N readings for chart |
+| Method | Endpoint                 | Purpose                        |
+| ------ | ------------------------ | ------------------------------ |
+| POST   | `/api/telemetry`         | Ingest SCADA reading           |
+| GET    | `/api/telemetry/latest`  | Current turbine state          |
+| GET    | `/api/telemetry/history` | Last N readings for chart      |
+| GET    | `/api/icing/status`      | Current icing detection status |
+| GET    | `/api/icing/history`     | Past icing events log          |
 
 ## Physics Model
 
-The Betz limit formula (simplified): P = 0.5 × ρ × A × Cp × v³
+Power ratio = actual_power / expected_power(wind_speed)
 
-Where ρ = 1.225 kg/m³, Cp = 0.35, A = rotor area.
-Real turbines use manufacturer power curves — this can be swapped in later via windpowerlib.
+Expected power is derived from a parametric curve fitted to the AV-7's
+normal operation data in ingestion/explore.ipynb. The IEA Wind Task 19
+T19 method defines the detection logic: sustained ratio below threshold
+combined with temperature near freezing triggers an icing event.
+
+AV-7 specs: 7kW rated, 12.8m rotor, cut-in 2 m/s, cut-off 14 m/s.
