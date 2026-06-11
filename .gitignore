@@ -25,7 +25,7 @@ node_modules/
 # HDF5 data files - gigabytes, download separately from Zenodo
 *.hdf5
 *.h5
-data/T1.csv
+data/
 
 # Jupyter
 .ipynb_checkpoints/
