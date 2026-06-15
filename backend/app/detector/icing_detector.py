@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from app.detector.power_curve import power_ratio
 
 # Tunable parameters – change these if needed after evaluation
-RATIO_THRESHOLD = 0.5   # ratio below this = underperforming
+RATIO_THRESHOLD = 0.1   # ratio below this = underperforming
 WINDOW_SIZE     = 10    # number of recent readings to track
 MIN_TRIGGERS    = 7     # how many of those must be below threshold to alert
 
