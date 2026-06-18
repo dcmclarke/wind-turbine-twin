@@ -1,0 +1,48 @@
+name: Icing Detector Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # lets you trigger it manually from the GitHub Actions tab
+
+# Least privilege — this workflow only reads code, nothing else
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # kill the job if it hangs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1 # shallow clone — we don't need git history
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524bde4b950e9e98b6b74cce0feb7af9570 # v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip packages
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-h5py-numpy-sklearn-matplotlib-pandas
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install h5py numpy scikit-learn matplotlib pandas
+
+      - name: Download AV-7 dataset
+        run: |
+          pip install zenodo-get
+          mkdir -p data
+          zenodo_get 8223010 -o data
+
+      - name: Run evaluation against baseline
+        run: python evaluation/evaluate.py --baseline evaluation/metrics_baseline.json
