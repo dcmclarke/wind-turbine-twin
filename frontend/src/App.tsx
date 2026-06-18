@@ -22,7 +22,7 @@ export default function App() {
     usePolling<TelemetryReading>('/api/telemetry/latest', 2000, autoRefresh)
 
   const { data: telemetryHistory, loading: historyLoading, error: historyError } =
-    usePolling<TelemetryHistory>('/api/telemetry/history', 10000, autoRefresh)
+    usePolling<TelemetryHistory>('/api/telemetry/history?limit=500', 10000, autoRefresh)
 
   const { data: icingHistory, loading: eventsLoading, error: eventsError } =
     usePolling<IcingHistory>('/api/icing/history', 30000, autoRefresh)

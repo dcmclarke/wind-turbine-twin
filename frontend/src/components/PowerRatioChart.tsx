@@ -44,11 +44,11 @@ export default function PowerRatioChart({ history, loading, error }: Props) {
   // - ratio: the power ratio value
   // Readings where ratio is null are filtered out (wind below cut-in)
   const chartData = history
-    .filter(r => r.power_ratio !== null)
-    .map(r => ({
-      time:  new Date(r.timestamp).getTime(),
-      ratio: r.power_ratio as number,
-    }))
+  .filter(r => r.power_ratio !== null)
+  .map(r => ({
+    time:  new Date(r.timestamp).getTime(),
+    ratio: Math.min(r.power_ratio as number, 2.0),
+  }))
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-800 p-6">

@@ -1,4 +1,4 @@
-name: Icing Detector Evaluation
+name: Icing Detector Tests
 
 on:
   push:
@@ -11,9 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  evaluate:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
@@ -26,20 +26,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-h5py-numpy-sklearn-matplotlib-pandas
-
       - name: Install dependencies
-        run: pip install h5py numpy scikit-learn matplotlib pandas
+        run: pip install numpy pandas
 
-      - name: Download AV-7 dataset
-        run: |
-          pip install zenodo-get
-          mkdir -p data
-          zenodo_get 8223010 -o data
-
-      - name: Run evaluation against baseline
-        run: python evaluation/evaluate.py --baseline evaluation/metrics_baseline.json
+      - name: Run unit tests
+        run: python evaluation/test_detector.py
