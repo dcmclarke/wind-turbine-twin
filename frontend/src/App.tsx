@@ -11,66 +11,49 @@ import IcingEventLog from './components/IcingEventLog'
 export default function App() {
   const [autoRefresh, setAutoRefresh] = useState(true)
 
-  // Four polling calls — one per API endpoint
-  // Each returns { data, loading, error, refresh }
-  // We rename them with aliases (icingStatus, latestLoading etc)
-  // so they don't clash with each other
   const { data: icingStatus, loading: icingLoading, error: icingError } =
     usePolling<IcingStatus>('/api/icing/status', 2000, autoRefresh)
-
   const { data: latestReading, loading: latestLoading, error: latestError } =
     usePolling<TelemetryReading>('/api/telemetry/latest', 2000, autoRefresh)
-
   const { data: telemetryHistory, loading: historyLoading, error: historyError } =
     usePolling<TelemetryHistory>('/api/telemetry/history?limit=500', 10000, autoRefresh)
-
   const { data: icingHistory, loading: eventsLoading, error: eventsError } =
     usePolling<IcingHistory>('/api/icing/history', 30000, autoRefresh)
 
   return (
-    <div className="min-h-screen bg-slate-900 p-8">
+    <div className="min-h-screen bg-deep p-8 font-sans">
 
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-100">
-          Wind Turbine Digital Twin
-        </h1>
-        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={autoRefresh}
-            onChange={e => setAutoRefresh(e.target.checked)}
-            className="accent-blue-500"
-          />
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-2">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan" />
+            Real-Time SCADA Monitoring
+          </p>
+          <h1 className="font-mono text-3xl font-bold tracking-tight text-ink-1">
+            Wind Turbine Icing Detection
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">
+            Detects ice accretion using existing power and wind sensors — no extra hardware required.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 whitespace-nowrap text-xs text-ink-2 cursor-pointer">
+          <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="accent-cyan" />
           Auto-refresh
         </label>
       </div>
 
-      <div className="flex flex-col gap-6">
-        <IcingStatusCard
-          status={icingStatus}
-          loading={icingLoading}
-          error={icingError}
-        />
-        <MetricsRow
-          reading={latestReading}
-          loading={latestLoading}
-          error={latestError}
-        />
-        <PowerRatioChart
-          history={telemetryHistory}
-          loading={historyLoading}
-          error={historyError}
-        />
-        <HistoryTable
-          history={telemetryHistory}
-          loading={historyLoading}
-          error={historyError}
-        />
-        <IcingEventLog
-          events={icingHistory}
-          loading={eventsLoading}
-          error={eventsError}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-5">
+        <IcingStatusCard status={icingStatus} loading={icingLoading} error={icingError} asOf={latestReading?.timestamp ?? null} />
+        <MetricsRow reading={latestReading} history={telemetryHistory} loading={latestLoading} error={latestError} />
+      </div>
+
+      <div className="mt-5">
+        <PowerRatioChart history={telemetryHistory} loading={historyLoading} error={historyError} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <HistoryTable history={telemetryHistory} loading={historyLoading} error={historyError} />
+        <IcingEventLog events={icingHistory} loading={eventsLoading} error={eventsError} />
       </div>
 
     </div>

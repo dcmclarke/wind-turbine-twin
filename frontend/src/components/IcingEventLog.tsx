@@ -1,6 +1,6 @@
-// src/components/IcingEventLog.tsx
 import type { IcingHistory } from '../types/api'
 import LoadingSpinner from './LoadingSpinner'
+import Panel from './Panel'
 
 interface Props {
   events: IcingHistory | null
@@ -10,57 +10,41 @@ interface Props {
 
 export default function IcingEventLog({ events, loading, error }: Props) {
   if (loading) return <LoadingSpinner />
-
   if (error) {
     return (
-      <div className="rounded-lg border border-slate-700 bg-slate-800 p-4">
-        <p className="text-sm text-red-400">Connection error: {error}</p>
-      </div>
+      <Panel title="Icing Event Log" accent="red">
+        <p className="text-sm text-red">Connection error: {error}</p>
+      </Panel>
     )
   }
-
   if (!events || events.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-700 bg-slate-800 p-6">
-        <p className="text-sm text-slate-400">No icing events logged yet.</p>
-      </div>
+      <Panel title="Icing Event Log">
+        <p className="text-sm text-ink-2">No icing events logged yet.</p>
+      </Panel>
     )
   }
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-800 p-6">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-400">
-        Icing Event Log
-      </p>
-      <div className="flex flex-col gap-3">
+    <Panel title="Icing Event Log">
+      <div className="flex flex-col">
         {events.map(event => (
-          <div
-            key={event.id}
-            className={`rounded border p-3 ${
-              event.is_active
-                ? 'border-red-500/50 bg-red-950/30'
-                : 'border-slate-700 bg-slate-900/50'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-semibold uppercase ${
-                event.is_active ? 'text-red-400' : 'text-slate-400'
-              }`}>
-                {event.is_active ? 'Active' : 'Resolved'}
-              </span>
-              <span className="text-xs text-slate-500">
-                {event.trigger_count} triggers
-              </span>
+          <div key={event.id} className="flex items-center justify-between border-b border-edge/60 py-2.5 last:border-0">
+            <div className="flex items-center gap-2.5">
+              <span className={`h-2 w-2 rounded-full ${event.is_active ? 'bg-red' : 'bg-ink-3'}`} />
+              <div>
+                <span className={`text-[11px] font-semibold uppercase tracking-wide ${event.is_active ? 'text-red' : 'text-ink-2'}`}>
+                  {event.is_active ? 'Active' : 'Resolved'}
+                </span>
+                <p className="font-mono text-[11px] text-ink-3">
+                  {new Date(event.started_at).toLocaleString()} → {new Date(event.last_seen_at).toLocaleString()}
+                </p>
+              </div>
             </div>
-            <div className="mt-1 text-xs text-slate-400">
-              Started: {new Date(event.started_at).toLocaleString()}
-            </div>
-            <div className="text-xs text-slate-500">
-              Last seen: {new Date(event.last_seen_at).toLocaleString()}
-            </div>
+            <span className="font-mono text-[11px] text-ink-2">{event.trigger_count} triggers</span>
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
   )
 }
