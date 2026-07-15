@@ -1,0 +1,4 @@
+# Exclude Jupyter notebooks from GitHub's language statistics.
+# explore.ipynb is large (embedded outputs/plots) and otherwise dominates
+# the repo's language breakdown, hiding the actual Python/TypeScript code.
+*.ipynb linguist-vendored
