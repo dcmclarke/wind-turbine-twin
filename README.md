@@ -56,6 +56,10 @@ It also does one thing the original method doesn't account for: **the temperatur
 
 Validated against the full labeled ETH Zurich Aventa AV-7 dataset (1.5M+ readings, including a real recorded Dec 2022 icing event):
 
+The power curve fitted from 873,000+ real turbine readings, used as the baseline for detecting icing-related underperformance:
+
+![Fitted power curve](ingestion/power_curve_fitted.png)
+
 | Metric          | Value   |
 | :-------------- | :------ |
 | Precision       | 0.757   |
@@ -65,7 +69,13 @@ Validated against the full labeled ETH Zurich Aventa AV-7 dataset (1.5M+ reading
 | False Negatives | 9       |
 | False Positives | 98,825  |
 
-Recall of 1.000 means every real icing reading in the dataset was caught. The false positives are documented and understood, not swept under the rug: they cluster at low wind speeds where SCADA noise is highest — a known confounding factor in real icing detection (see [Decision 8](docs/decisions.md)). A wind-speed filter to suppress them was tested and rejected, because 75.7% of the actual icing event _also_ occurs in that same low-wind band — filtering it out would have gutted recall to fix precision.
+![Confusion matrix](evaluation/confusion_matrix.png)
+
+Recall of 1.000 means every real icing reading in the dataset was caught. The false positives are documented and understood, not swept under the rug: they cluster at low wind speeds where SCADA noise is highest — a known confounding factor in real icing detection (see [Decision 8](docs/decisions.md)):
+
+![False positive distribution by wind speed](ingestion/false_positive_wind_distribution.png)
+
+A wind-speed filter to suppress them was tested and rejected, because 75.7% of the actual icing event _also_ occurs in that same low-wind band — filtering it out would have gutted recall to fix precision.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -161,8 +171,11 @@ This is an actively developed portfolio project. Being upfront about what's fini
 **In progress:**
 
 - Frontend visual redesign (functionally complete, styling being reworked)
-- MQTT ingestion support
 - Cloud deployment
+
+**Potential future extension:**
+
+- Live MQTT ingestion, replacing the current historical-replay ingestion path
 
 No live demo link yet — clone and run locally with the steps above in the meantime.
 
