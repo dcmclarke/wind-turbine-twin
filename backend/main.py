@@ -1,3 +1,5 @@
+import os
+from contextlib import asynccontextmanager
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,9 +20,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+_allowed_origins = ["http://localhost:3000", "http://localhost:5173"]
+if frontend_url := os.getenv("FRONTEND_URL"):
+    _allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

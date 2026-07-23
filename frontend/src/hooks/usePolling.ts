@@ -41,7 +41,8 @@ export function usePolling<T>(
   // recreated on every render — important when passing to useEffect.
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:8000${url}`)
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const response = await fetch(`${apiBase}${url}`)
 
       if (!response.ok) {
         throw new Error(`API error ${response.status}`)
