@@ -27,6 +27,7 @@ Usage:
 """
 
 import argparse
+import os
 import time
 import sys
 from pathlib import Path
@@ -38,13 +39,16 @@ import numpy as np
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-API_URL = "http://localhost:8000/api/telemetry"
+API_URL = os.getenv("API_URL", "http://localhost:8000/api/telemetry")
 
-ICING_DATA_PATH = Path("C:/Projects/win-turbine-twin/data/aventa_rotor_icing/")
-NORMAL_DATA_PATH = Path(
-    "C:/Projects/win-turbine-twin/data/"
-    "aventa_normal_operation_for_system_identification/"
-)
+_DEFAULT_DATA_ROOT = Path(__file__).parent.parent / "data"
+ICING_DATA_PATH = Path(os.getenv(
+    "ICING_DATA_PATH", _DEFAULT_DATA_ROOT / "aventa_rotor_icing"
+))
+NORMAL_DATA_PATH = Path(os.getenv(
+    "NORMAL_DATA_PATH",
+    _DEFAULT_DATA_ROOT / "aventa_normal_operation_for_system_identification",
+))
 
 # WM channels we care about
 CHANNEL_MAP = {

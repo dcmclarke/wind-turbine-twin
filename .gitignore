@@ -26,6 +26,7 @@ node_modules/
 *.hdf5
 *.h5
 data/
+!data/README.md
 
 # Jupyter
 .ipynb_checkpoints/
