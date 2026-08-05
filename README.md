@@ -13,6 +13,10 @@
   <h3 align="center">Wind Turbine Icing Detection — SCADA Digital Twin</h3>
   <p align="center">
     A real-time icing-detection platform built around the IEA Wind Task 19 method, validated against real ETH Zurich SCADA fault data.
+    <br /><br />
+    <strong><a href="https://wind-turbine-icing.netlify.app">View Live Demo</a></strong>
+    <br />
+    <sub>Hosted on free tiers — the first load may take up to a minute while the backend wakes up.</sub>
   </p>
 </div>
 
@@ -104,6 +108,8 @@ A wind-speed filter to suppress them was tested and rejected, because 75.7% of t
 
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
+![Netlify](https://img.shields.io/badge/Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -167,17 +173,15 @@ This is an actively developed portfolio project. Being upfront about what's fini
 - Detection algorithm, power curve, and full backend API
 - Evaluation against the full labeled dataset (results above)
 - CI pipeline running unit tests on every push
+- Cloud deployment — [live demo here](https://wind-turbine-icing.netlify.app), running on Render (Docker backend), Netlify (frontend) and Neon (PostgreSQL)
 
 **In progress:**
 
 - Frontend visual redesign (functionally complete, styling being reworked)
-- Cloud deployment
 
 **Potential future extension:**
 
 - Live MQTT ingestion, replacing the current historical-replay ingestion path
-
-No live demo link yet — clone and run locally with the steps above in the meantime.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
