@@ -42,8 +42,7 @@ OUTPUT = ROOT / "backend" / "app" / "data" / "av7_10min.csv"
 
 ICING_DATES = {"17_12_2022", "18_12_2022", "19_12_2022", "20_12_2022"}
 
-# Blocks shorter than this are partial recordings (logger restarts) and are
-# not valid 10-minute samples.
+# Blocks shorter than this are partial recordings, not valid 10-minute samples.
 MIN_BLOCK_SECONDS = 540
 
 SENTINEL = -999  # the dataset marks bad readings as -1,000,000

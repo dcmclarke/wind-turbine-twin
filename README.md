@@ -1,215 +1,151 @@
-<a id="readme-top"></a>
+# Wind Turbine Icing Detection
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-[![CI](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/evaluate.yml/badge.svg)](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/evaluate.yml)
+[![CI](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/ci.yml/badge.svg)](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/ci.yml)
 
-<br />
-<div align="center">
-  <h3 align="center">Wind Turbine Icing Detection — SCADA Digital Twin</h3>
-  <p align="center">
-    A real-time icing-detection platform built around the IEA Wind Task 19 method, validated against real ETH Zurich SCADA fault data.
-    <br /><br />
-    <strong><a href="https://wind-turbine-icing.netlify.app">View Live Demo</a></strong>
-    <br />
-    <sub>Hosted on free tiers — the first load may take up to a minute while the backend wakes up.</sub>
-  </p>
-</div>
+Detects ice on a wind turbine's blades from the turbine's own SCADA data,
+using the IEA Wind Task 19 method, and runs it as an IoT pipeline: edge
+gateway → MQTT → FastAPI → PostgreSQL → React dashboard. It is built on real
+data from ETH Zurich's Aventa AV-7 research turbine, which iced up in
+December 2022.
 
----
+**[Live demo](https://wind-turbine-icing.netlify.app)**. It replays the 2022
+recordings at 300× speed. Free hosting sleeps when idle, so the first load
+takes up to a minute.
 
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li><a href="#about-the-project">About The Project</a></li>
-    <li><a href="#results">Results</a></li>
-    <li><a href="#built-with">Built With</a></li>
-    <li><a href="#key-engineering-decisions">Key Engineering Decisions</a></li>
-    <li><a href="#getting-started">Getting Started</a></li>
-    <li><a href="#project-status">Project Status</a></li>
-    <li><a href="#api-reference">API Reference</a></li>
-  </ol>
-</details>
-
----
-
-## About The Project
-
-Icing on turbine blades changes their aerodynamics, so a healthy turbine and an icing turbine produce different power output at the _same_ wind speed. This project turns that physical fact into a working detector.
-
-The **IEA Wind Task 19 icing detection method** — comparing actual power output against expected power output at a given wind speed — already existed as a research method. What didn't exist was an open-source, real-time application layer around it: live ingestion, persistent storage, a monitoring dashboard. That's the gap this project fills.
-
-It also does one thing the original method doesn't account for: **the temperature sensor in the real dataset is broken for the entire recording period.** Rather than use corrupted data or silently substitute an unvalidated proxy, the temperature gate was removed and the detector was redesigned to rely on the power-ratio signal alone — then validated quantitatively to confirm that adaptation still works. That adaptation, and the evidence behind it, is the project's own contribution on top of the existing science.
-
-**Core detection logic:**
-
-1. Look up expected power for the current wind speed (from a curve fitted to 873,000+ real "healthy" SCADA readings)
-2. Compute `power_ratio = actual_power / expected_power`
-3. Track the ratio across a rolling window of the last 10 readings
-4. Flag an icing alert only if **7 of the last 10** readings fall below threshold — tolerating sensor noise in both directions without either missing real icing events or false-alarming on single glitchy readings
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
+![Dashboard during the December 2022 icing event](docs/images/dashboard.png)
 
 ## Results
 
-Validated against the full labeled ETH Zurich Aventa AV-7 dataset (1.5M+ readings, including a real recorded Dec 2022 icing event):
+Evaluated on 11 clean-blade days and the 17–20 December 2022 icing period.
+Each clean day was scored against a reference curve fitted without that day.
+The comparison is a rule that raises an alarm whenever a 10-minute reading
+shows zero output while the wind is above cut-in.
 
-The power curve fitted from 873,000+ real turbine readings, used as the baseline for detecting icing-related underperformance:
+|                                        | Task 19 detector              | Zero-output rule          |
+| :------------------------------------- | :---------------------------- | :------------------------ |
+| Finds the December icing event         | Yes, 60 min after it begins   | Yes, 10 min after         |
+| False events on 11 clean days          | **6, all on one day**         | 12, spread over 6 days    |
+| Clean days with no false event         | **10 of 11**                  | 5 of 11                   |
+| Energy lost during the icing event     | 12.7 kWh against expected     | not estimated             |
 
-![Fitted power curve](ingestion/power_curve_fitted.png)
+The hour's delay is by design: Task 19 wants an hour of evidence before it
+calls a stop. The six false events all fell on 20 June 2022, when the turbine
+ran at about 70% of its expected output all day. That was a real shortfall,
+and the data doesn't say what caused it. It was June, so a working
+temperature sensor would have ruled out ice.
 
-| Metric          | Value   |
-| :-------------- | :------ |
-| Precision       | 0.757   |
-| Recall          | 1.000   |
-| F1              | 0.862   |
-| True Positives  | 308,110 |
-| False Negatives | 9       |
-| False Positives | 98,825  |
+<p>
+  <img src="evaluation/results/reference_curve.png" width="49%" alt="Reference power curve with P10–P90 band; icing-period readings sit at zero output" />
+  <img src="evaluation/results/icing_timeline.png" width="49%" alt="17–18 December 2022: expected power against zero actual output, with the detected events shaded" />
+</p>
 
-![Confusion matrix](evaluation/confusion_matrix.png)
+**What this does not show.**
 
-Recall of 1.000 means every real icing reading in the dataset was caught. The false positives are documented and understood, not swept under the rug: they cluster at low wind speeds where SCADA noise is highest — a known confounding factor in real icing detection (see [Decision 8](docs/decisions.md)):
+- **One icing event.** The public data holds a single icing event, too few to claim a detection rate.
+- **Only the "stopped" case has met real ice.** The turbine was stopped for the whole event, so the "stopped" class (B) has been tested against real ice. The "reduced output" class (A) and the "overproduction" class (C) have only been tested for false alarms.
+- **No temperature data.** The turbine's temperature sensor was broken for the entire dataset, so the detector can't tell ice from any other cause of low output.
+- **A narrow wind range.** There are only 187 clean samples of the turbine running, covering 1.76–4.19 m/s. Readings outside that range are marked "not judged" rather than guessed.
 
-![False positive distribution by wind speed](ingestion/false_positive_wind_distribution.png)
+Full method, per-day results and how to reproduce them:
+[evaluation/README.md](evaluation/README.md).
 
-A wind-speed filter to suppress them was tested and rejected, because 75.7% of the actual icing event _also_ occurs in that same low-wind band — filtering it out would have gutted recall to fix precision.
+## How it works
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+```mermaid
+flowchart LR
+    T["Turbine sensors<br/>~7 readings/s"] --> E["Edge gateway<br/>10-minute summaries"]
+    E -->|"MQTT, QoS 1"| B[(Mosquitto)]
+    B --> A["FastAPI backend<br/>Task 19 detector"]
+    A --> P[(PostgreSQL)]
+    A -->|"/api/dashboard"| D[React dashboard]
+```
 
----
+1. **Ten-minute summaries.** SCADA analysis and the Task 19 method both work on 10-minute statistics, so the edge gateway sends one summary instead of about 4,200 raw readings. Here, those summaries were computed once from ETH Zurich's raw files ([data_prep/build_dataset.py](data_prep/build_dataset.py)) and committed, so everything runs without the 30 GB download.
+2. **Compare with the clean-blade curve.** Days with clean blades give, for each wind speed, the median power (P50) and the 10th and 90th percentiles (P10, P90). A reading below P10 means underproduction, which ice causes. A reading above P90 means overproduction, which usually points to an iced wind sensor. Near-zero output when P50 says the turbine should be producing means a stop.
+3. **Only sustained problems count.** Underproduction and overproduction must last 30 minutes (3 readings), and a stop must last 60 minutes (6 readings), before they become an icing event (class A, C or B). Each event records the energy lost against P50.
 
-## Built With
+On the pipeline side:
 
-**Backend**
+- **One transaction per reading.** Each reading, any event it opens or closes, and the detector's memory are written in the same database transaction, so a restart resumes exactly where it stopped.
+- **Duplicates are harmless.** MQTT QoS 1 can deliver a message twice; readings are unique by timestamp, so a repeat is ignored.
+- **Nothing lost while the backend is down.** With a persistent session, the broker holds readings until the backend reconnects. This was tested by stopping the backend mid-stream: no gaps.
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+The hosted demo has no MQTT broker, so it replays the data in-process through
+the same ingestion code. `docker compose up` runs the full MQTT pipeline.
+More detail: [docs/architecture.md](docs/architecture.md).
 
-**Frontend**
+## What changed from version 1
 
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+The first version of this project reported precision 0.757, recall 1.000 and
+F1 0.862. [evaluation/legacy_comparison.py](evaluation/legacy_comparison.py)
+reproduces those numbers exactly, and shows why they were misleading:
 
-**Data & Evaluation**
+- **The perfect recall was guaranteed.** Every reading labelled "icing" had an output of exactly 0.0 kW, and the detector flagged near-zero output, so recall of 1.000 said nothing about ice.
+- **A one-line rule did slightly better.** "Alarm if power ≤ 0" scored 0.771 / 1.000 / 0.871.
+- **The negatives had been cleaned.** Idle periods were filtered out of the normal-operation files, which removed readings that would have been false alarms.
+- **Five normal days were counted twice.** They appear in both source folders as byte-identical files.
 
-![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+Version 2 moved to 10-minute data and the Task 19 method, tests each day
+against a curve that never saw it, reports events rather than per-reading
+scores, and compares everything to the simple rule.
 
-**Infrastructure**
+## Running it
 
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
-![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
-![Netlify](https://img.shields.io/badge/Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
-
-## Key Engineering Decisions
-
-Full reasoning and tradeoffs for every decision are documented in [`docs/decisions.md`](docs/decisions.md). A few worth highlighting:
-
-- **Data-derived power curve, not a textbook formula** — the expected-power lookup table is fitted directly from 873,000+ real "healthy" readings from this specific turbine, not the Betz equation or manufacturer constants for a different model.
-- **Temperature gate removed, not faked** — the dataset's temperature sensor is broken throughout. Rather than use corrupted values or an unvalidated proxy, the gate was removed and the detector redesigned around the power-ratio signal alone.
-- **Threshold set from a quantitative sweep, not a guess** — thresholds from 0.1–0.9 were swept against the full labeled dataset; 0.1 maximises precision while keeping recall at 1.000.
-- **Persistence filter (7 of 10) over single-reading alerts** — a single noisy reading, in either direction, doesn't trigger or suppress an alert. Requiring all 10/10 was considered and rejected — real sensor data is never that clean, even during genuine icing events.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Docker** and **Docker Compose**
-- **Python 3.10+** (for the replay/ingestion script)
-- The [ETH Zurich Aventa AV-7 dataset](https://zenodo.org/records/8223010) (not included in this repo — see `data/README.md` for setup)
-
-### Installation & Running
+**Everything, with Docker:**
 
 ```sh
-# Clone the repository
-git clone https://github.com/dcmclarke/wind-turbine-twin.git
-cd wind-turbine-twin
+docker compose up --build
+```
 
-# Start backend + database
-docker compose up -d
+This starts the dashboard at http://localhost:5173 and the API docs at
+http://localhost:8000/docs. The edge publisher streams the dataset over MQTT
+at one reading every 2 seconds. Readings already in the database are skipped
+on a second run; `docker compose down -v` starts fresh.
 
-# In a second terminal — frontend
+**Backend on its own** (Python 3.12+; SQLite by default, replaying the demo feed in-process):
+
+```sh
+cd backend
+pip install -r requirements-dev.txt
+uvicorn main:app --reload
+pytest
+```
+
+**Frontend on its own:**
+
+```sh
 cd frontend
 npm install
 npm run dev
-# → http://localhost:5173
-
-# In a third terminal — replay real turbine data into the running system
-cd ingestion
-python replay.py --dataset normal --speed 0      # seed healthy baseline
-python replay.py --dataset icing --start 2022-12-17 --end 2022-12-18 --speed 0
 ```
 
-Backend API: `http://localhost:8000` (interactive docs at `/docs`)
+**Evaluation** (uses the committed 10-minute data; CI runs it with `--check`):
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+```sh
+pip install -r evaluation/requirements.txt
+python evaluation/evaluate.py
+```
 
----
+To rebuild the dataset from the raw ETH Zurich files, see [data/README.md](data/README.md).
 
-## Project Status
+## Repository layout
 
-This is an actively developed portfolio project. Being upfront about what's finished and what isn't:
+```
+backend/        FastAPI service: detector, ingestion, feeds (demo, MQTT), API, tests
+  app/detector/   Task 19 reference curve and streaming detector (no web or DB code)
+  app/data/       the 10-minute AV-7 dataset (916 readings)
+edge/           MQTT edge-gateway publisher
+frontend/       React + TypeScript dashboard
+evaluation/     held-out evaluation, version-1 comparison, results and figures
+data_prep/      HDF5 → 10-minute dataset, reference-curve fitting, original exploration notebook
+docs/           architecture and design decisions
+```
 
-**Complete and validated:**
+Design decisions and the trade-offs behind them are recorded in
+[docs/decisions.md](docs/decisions.md).
 
-- Detection algorithm, power curve, and full backend API
-- Evaluation against the full labeled dataset (results above)
-- CI pipeline running unit tests on every push
-- Cloud deployment — [live demo here](https://wind-turbine-icing.netlify.app), running on Render (Docker backend), Netlify (frontend) and Neon (PostgreSQL)
+## Data and credits
 
-**In progress:**
-
-- Frontend visual redesign (functionally complete, styling being reworked)
-
-**Potential future extension:**
-
-- Live MQTT ingestion, replacing the current historical-replay ingestion path
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
-
-## API Reference
-
-| Endpoint                 | Method | Description                      |
-| :----------------------- | :----- | :------------------------------- |
-| `/api/telemetry`         | POST   | Ingest a new sensor reading      |
-| `/api/telemetry/latest`  | GET    | Most recent reading              |
-| `/api/telemetry/history` | GET    | Historical readings (`?limit=N`) |
-| `/api/icing/status`      | GET    | Current detector state           |
-| `/api/icing/history`     | GET    | Past icing events                |
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- MARKDOWN LINKS & IMAGES -->
-
-[contributors-shield]: https://img.shields.io/github/contributors/dcmclarke/wind-turbine-twin.svg?style=for-the-badge
-[contributors-url]: https://github.com/dcmclarke/wind-turbine-twin/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/dcmclarke/wind-turbine-twin.svg?style=for-the-badge
-[forks-url]: https://github.com/dcmclarke/wind-turbine-twin/network/members
-[stars-shield]: https://img.shields.io/github/stars/dcmclarke/wind-turbine-twin.svg?style=for-the-badge
-[stars-url]: https://github.com/dcmclarke/wind-turbine-twin/stargazers
-[issues-shield]: https://img.shields.io/github/issues/dcmclarke/wind-turbine-twin.svg?style=for-the-badge
-[issues-url]: https://github.com/dcmclarke/wind-turbine-twin/issues
-[license-shield]: https://img.shields.io/github/license/dcmclarke/wind-turbine-twin.svg?style=for-the-badge
-[license-url]: https://github.com/dcmclarke/wind-turbine-twin/blob/main/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://www.linkedin.com/in/dc-clarke/
+- **Data:** Chatzi, E., Abdallah, I., Hofsäß, M., Bischoff, O., Barber, S. & Marykovskiy, Y. (2023). *Aventa AV-7 ETH Zurich Research Wind Turbine SCADA and SHM data*. Zenodo. https://doi.org/10.5281/zenodo.8223010. Licensed CC BY 4.0. The 10-minute dataset in this repository and the blade photo on the dashboard are derived from it.
+- **Method:** IEA Wind TCP Task 19, [T19IceLossMethod](https://github.com/IEAWind-Task19/T19IceLossMethod) (BSD-3-Clause). This project follows its approach but is a separate implementation; the differences are listed in [docs/decisions.md](docs/decisions.md).
+- **Code:** MIT licence, see [LICENSE.txt](LICENSE.txt).

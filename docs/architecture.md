@@ -1,49 +1,87 @@
 # Architecture
 
-## Data Flow
+Readings travel from the turbine to the dashboard through five pieces. The
+detector sits in the backend but has no web or database code, so the same
+logic runs in the API, the tests and the evaluation.
 
 ```mermaid
 flowchart LR
-    A[AV-7 HDF5 Dataset\nETH Zurich] -->|replay.py| B[FastAPI Backend]
-    M[MQTT Broker\nMosquitto\nplanned] -.->|subscribe| B
-    B -->|writes| C[(PostgreSQL)]
-    C -->|reads| B
-    B -->|GET /api/telemetry/history\nGET /api/icing/status\nGET /api/icing/history| D[React Dashboard]
-    D -->|polls every 2s| B
+    E["Edge gateway<br/>edge/publisher.py"] -->|"MQTT, QoS 1<br/>windfarm/av7/scada/10min"| B[(Mosquitto)]
+    B --> S["MQTT subscriber<br/>app/feeds/mqtt.py"]
+    R["Demo replay<br/>app/feeds/demo.py"] -.->|hosted demo| I
+    S --> I["Ingestion<br/>app/services/ingest.py"]
+    I --> D["Task 19 detector<br/>app/detector/"]
+    I --> P[(PostgreSQL)]
+    P --> A["REST API<br/>app/routes/"]
+    A -->|"GET /api/dashboard, every 2 s"| F[React dashboard]
 ```
 
-_(Dashed line = planned, not yet implemented. Everything else below is built and working.)_
+`INGEST_MODE` picks the source: `mqtt` in Docker Compose, `demo` on the
+hosted demo (no broker available; Decision 14), `none` for tests.
 
 ## Components
 
-| Component        | Technology         | Responsibility                                  | Status                             |
-| ---------------- | ------------------ | ----------------------------------------------- | ---------------------------------- |
-| Ingestion script | Python + h5py      | Replay AV-7 HDF5 data row by row to API         | Done                               |
-| MQTT subscriber  | Python + paho-mqtt | Accept live sensor data via MQTT protocol       | Planned                            |
-| Icing detector   | Python             | IEA T19 power ratio method + persistence filter | Done                               |
-| API              | FastAPI            | Receive telemetry, run detector, serve readings | Done                               |
-| Database         | PostgreSQL         | Store readings and icing events with timestamps | Done                               |
-| Dashboard        | React + Recharts   | Live power ratio chart, icing alerts, event log | Done (visual redesign in progress) |
+| Component | Code | Responsibility |
+| :-- | :-- | :-- |
+| Dataset builder | `data_prep/build_dataset.py` | Raw HDF5 (~7 Hz) → 10-minute statistics CSV, run once |
+| Edge gateway | `edge/publisher.py` | Publish each 10-minute summary over MQTT, QoS 1, waiting for the broker's acknowledgement |
+| Broker | Mosquitto 2 | Route messages; queue them for the backend while it is disconnected |
+| Feeds | `backend/app/feeds/` | MQTT subscriber, or in-process replay for the hosted demo |
+| Ingestion | `backend/app/services/ingest.py` | Validate, reject duplicates and out-of-order readings, run the detector, write reading + events + state in one transaction |
+| Detector | `backend/app/detector/` | Reference curve (P10/P50/P90) and the streaming Task 19 detector |
+| API | `backend/app/routes/` | Status, readings, events, reference curve; optional HTTP ingestion |
+| Dashboard | `frontend/` | Status, power vs expectation, power curve, events, readings table |
 
-## API Endpoints
+## Data model
 
-| Method | Endpoint                 | Purpose                        |
-| ------ | ------------------------ | ------------------------------ |
-| POST   | `/api/telemetry`         | Ingest SCADA reading           |
-| GET    | `/api/telemetry/latest`  | Current turbine state          |
-| GET    | `/api/telemetry/history` | Last N readings for chart      |
-| GET    | `/api/icing/status`      | Current icing detection status |
-| GET    | `/api/icing/history`     | Past icing events log          |
+| Table | Holds | Notes |
+| :-- | :-- | :-- |
+| `scada_readings` | One row per 10-minute reading, with the detector's flag, P10/P50/P90 and energy shortfall | `timestamp` unique and indexed; `event_id` links readings to their event |
+| `ice_events` | One row per confirmed event: class, start, last reading, end, readings, energy lost, mean wind | `ended_at` is null while the event is active |
+| `detector_state` | One row: the detector's current run and active event as JSON | Written in the same transaction as each reading |
 
-## Physics Model
+Timestamps are the turbine's own clock, stored without a timezone and shown
+as recorded. `received_at` is when the backend processed the reading, in UTC.
 
-Power ratio = actual_power / expected_power(wind_speed)
+## API
 
-Expected power is derived from a parametric curve fitted to the AV-7's
-normal operation data in ingestion/explore.ipynb. The IEA Wind Task 19
-T19 method defines the detection logic: a sustained power ratio below
-threshold (7 of the last 10 readings) triggers an icing event. The
-original method's temperature gate was removed — see
-[Decision 6](decisions.md) for why.
+| Method | Path | Returns |
+| :-- | :-- | :-- |
+| GET | `/api/dashboard?limit=N` | Status, the last N readings and recent events in one response |
+| GET | `/api/status` | Latest reading, active event, run in progress, totals, feed |
+| GET | `/api/readings?limit=N` | Last N readings, oldest first |
+| GET | `/api/events?limit=N` | Events, newest first |
+| GET | `/api/reference-curve` | The clean-blade curve and the persistence settings |
+| POST | `/api/readings` | Ingest one reading; 403 unless `ALLOW_HTTP_INGEST=true`, 409 duplicate, 422 invalid or out of order |
+| GET | `/health` | Liveness check |
 
-AV-7 specs: 7kW rated, 12.8m rotor, cut-in 2 m/s, cut-off 14 m/s.
+Interactive documentation is at `/docs` on a running backend.
+
+## Configuration
+
+| Variable | Default | Used for |
+| :-- | :-- | :-- |
+| `DATABASE_URL` | `sqlite:///./local.db` | Any `postgres://` or `postgresql://` URL is rewritten to use psycopg 3 |
+| `INGEST_MODE` | `demo` | `demo`, `mqtt` or `none` |
+| `DEMO_SECONDS_PER_SAMPLE` | `2` | Wall-clock seconds between replayed readings |
+| `DEMO_LIVE_FROM` | `2022-11-04T00:00:00` | Readings before this are preloaded each loop |
+| `MQTT_HOST` / `MQTT_PORT` / `MQTT_TOPIC` | `localhost` / `1883` / `windfarm/av7/scada/10min` | Broker connection |
+| `ALLOW_HTTP_INGEST` | `false` | Enables `POST /api/readings` |
+| `FRONTEND_URL` | none | Extra origin allowed by CORS |
+| `VITE_API_URL` (frontend, build time) | `http://localhost:8000` | Where the dashboard fetches from |
+
+## Deployment
+
+The hosted demo runs the backend container on Render (free tier, sleeps when
+idle), the database on Neon (PostgreSQL) and the dashboard on Netlify. The
+backend needs `DATABASE_URL` and `FRONTEND_URL`; `INGEST_MODE` defaults to
+`demo`. The frontend needs `VITE_API_URL` at build time.
+
+## Tests and CI
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+
+- **Backend:** 39 pytest tests covering the reference curve, detector rules, restart safety, API behaviour, duplicates and ordering.
+- **Evaluation:** reruns the full evaluation on the committed dataset and fails if any result differs from `evaluation/results/metrics.json`.
+- **Frontend:** ESLint and a production build, which includes type checking.
+- **Docker:** builds the backend image.
