@@ -25,7 +25,8 @@ node_modules/
 # HDF5 data files - gigabytes, download separately from Zenodo
 *.hdf5
 *.h5
-data/
+# data/* (not data/) so git still looks inside and can see the README
+data/*
 !data/README.md
 
 # Jupyter
