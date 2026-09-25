@@ -38,8 +38,12 @@ class Settings:
 @lru_cache
 def get_settings() -> Settings:
     url = os.getenv("DATABASE_URL", "sqlite:///./local.db")
-    if url.startswith("postgres://"):  # Heroku-style URLs; SQLAlchemy needs postgresql://
-        url = url.replace("postgres://", "postgresql://", 1)
+    # Name the driver explicitly (psycopg 3). Hosts hand out postgres:// or
+    # postgresql:// URLs, and SQLAlchemy's default driver for those has changed
+    # between versions.
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            url = "postgresql+psycopg://" + url[len(prefix):]
 
     mode = os.getenv("INGEST_MODE", "demo").strip().lower()
     if mode not in ("demo", "mqtt", "none"):

@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+ENV PYTHONUNBUFFERED=1
 
 # Non-root user: a compromised container gets no root access
 RUN groupadd -r turbine && useradd -r -g turbine turbine

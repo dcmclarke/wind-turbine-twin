@@ -3,7 +3,7 @@ fastapi[standard]==0.141.1
 
 # Database
 sqlalchemy==2.1.0
-psycopg2-binary==2.9.13
+psycopg[binary]==3.3.6
 
 # Config
 python-dotenv==1.2.3

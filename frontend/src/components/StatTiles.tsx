@@ -37,7 +37,7 @@ export default function StatTiles({ status }: { status: Status }) {
         label="Shortfall in detected events"
         value={fixed(status.totals.energy_lost_kwh, 1)}
         unit="kWh"
-        note={`Against the P50 curve, across ${status.totals.events} ${status.totals.events === 1 ? 'event' : 'events'} this loop`}
+        note={`Against the P50 curve, across ${status.totals.events} ${status.totals.events === 1 ? 'event' : 'events'}${feed.mode === 'demo' ? ' this loop' : ''}`}
       />
       <Tile
         label="Readings processed"
