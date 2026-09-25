@@ -1,3 +1,7 @@
+# Full pipeline: edge gateway -> MQTT broker -> backend -> PostgreSQL -> dashboard
+#   docker compose up --build
+#   dashboard http://localhost:5173 · API docs http://localhost:8000/docs
+
 services:
 
   postgres:
@@ -16,16 +20,50 @@ services:
       timeout: 5s
       retries: 5
 
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     environment:
-      # Set automatically by docker-compose - no local .env needed when using Docker
       DATABASE_URL: postgresql://postgres:password@postgres:5432/windturbine
+      INGEST_MODE: mqtt
+      MQTT_HOST: mosquitto
     depends_on:
       postgres:
         condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  edge:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    command: ["python", "publisher.py", "--csv", "av7_10min.csv", "--host", "mosquitto", "--seconds-per-sample", "2"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

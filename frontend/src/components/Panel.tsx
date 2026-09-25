@@ -1,23 +1,24 @@
 import type { ReactNode } from 'react'
 
 interface Props {
-  title?: string
+  title: string
+  subtitle?: ReactNode
+  aside?: ReactNode
   children: ReactNode
   className?: string
-  accent?: 'cyan' | 'red'
 }
 
-export default function Panel({ title, children, className = '', accent = 'cyan' }: Props) {
-  const dotColor = accent === 'red' ? 'bg-red' : 'bg-cyan'
+export default function Panel({ title, subtitle, aside, children, className = '' }: Props) {
   return (
-    <div className={`overflow-hidden rounded-lg border border-edge bg-panel shadow-[0_8px_24px_-12px_rgba(0,0,0,0.6)] ${className}`}>
-      {title && (
-        <div className="flex items-center gap-2 border-b border-edge bg-panel-header px-5 py-3">
-          <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
-          <p className="text-xs font-bold uppercase tracking-widest text-ink-1">{title}</p>
+    <section className={`min-w-0 rounded-xl border border-hairline bg-surface p-4 sm:p-5 ${className}`}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-ink-1">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-[13px] leading-snug text-ink-2">{subtitle}</p>}
         </div>
-      )}
-      <div className="p-5">{children}</div>
-    </div>
+        {aside}
+      </div>
+      {children}
+    </section>
   )
 }

@@ -1,61 +1,58 @@
-import { useState } from 'react'
 import { usePolling } from './hooks/usePolling'
-import type { TelemetryReading, IcingStatus, TelemetryHistory, IcingHistory } from './types/api'
+import type { Dashboard, ReferenceCurve } from './lib/api'
+import { REPO_URL } from './lib/api'
 
-import IcingStatusCard from './components/IcingStatusCard'
-import MetricsRow from './components/MetricsRow'
-import PowerRatioChart from './components/PowerRatioChart'
-import HistoryTable from './components/HistoryTable'
-import IcingEventLog from './components/IcingEventLog'
+import About from './components/About'
+import EventLog from './components/EventLog'
+import Header from './components/Header'
+import PowerCurveView from './components/PowerCurveView'
+import PowerTimeline from './components/PowerTimeline'
+import ReadingsTable from './components/ReadingsTable'
+import StatTiles from './components/StatTiles'
+import StatusHero from './components/StatusHero'
+import WakingUp from './components/WakingUp'
 
 export default function App() {
-  const [autoRefresh, setAutoRefresh] = useState(true)
+  // One request brings status, recent readings and events; the demo adds a
+  // reading every 2 seconds, so poll at the same rate.
+  const dashboard = usePolling<Dashboard>('/api/dashboard?limit=144', 2000)
+  const curve = usePolling<ReferenceCurve>('/api/reference-curve', 5 * 60 * 1000)
 
-  const { data: icingStatus, loading: icingLoading, error: icingError } =
-    usePolling<IcingStatus>('/api/icing/status', 2000, autoRefresh)
-  const { data: latestReading, loading: latestLoading, error: latestError } =
-    usePolling<TelemetryReading>('/api/telemetry/latest', 2000, autoRefresh)
-  const { data: telemetryHistory, loading: historyLoading, error: historyError } =
-    usePolling<TelemetryHistory>('/api/telemetry/history?limit=500', 10000, autoRefresh)
-  const { data: icingHistory, loading: eventsLoading, error: eventsError } =
-    usePolling<IcingHistory>('/api/icing/history', 30000, autoRefresh)
+  if (!dashboard.data) return <WakingUp error={dashboard.error} />
+  const { status, readings, events } = dashboard.data
 
   return (
-    <div className="min-h-screen bg-deep p-8 font-sans">
+    <div className="min-h-screen">
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+        <Header feed={status.feed} lastSuccess={dashboard.lastSuccess} error={dashboard.error} />
 
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-2">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan" />
-            Real-Time SCADA Monitoring
-          </p>
-          <h1 className="font-mono text-3xl font-bold tracking-tight text-ink-1">
-            Wind Turbine Icing Detection
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-ink-2">
-            Detects ice accretion using existing power and wind sensors — no extra hardware required.
-          </p>
+        <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
+          <StatusHero status={status} />
+          <StatTiles status={status} />
         </div>
-        <label className="flex items-center gap-2 whitespace-nowrap text-xs text-ink-2 cursor-pointer">
-          <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="accent-cyan" />
-          Auto-refresh
-        </label>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-5">
-        <IcingStatusCard status={icingStatus} loading={icingLoading} error={icingError} asOf={latestReading?.timestamp ?? null} />
-        <MetricsRow reading={latestReading} history={telemetryHistory} loading={latestLoading} error={latestError} />
-      </div>
+        <PowerTimeline readings={readings} referenceRange={status.reference_range} />
 
-      <div className="mt-5">
-        <PowerRatioChart history={telemetryHistory} loading={historyLoading} error={historyError} />
-      </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <PowerCurveView curve={curve.data} readings={readings} />
+          <EventLog events={events} />
+        </div>
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <HistoryTable history={telemetryHistory} loading={historyLoading} error={historyError} />
-        <IcingEventLog events={icingHistory} loading={eventsLoading} error={eventsError} />
-      </div>
+        <ReadingsTable readings={readings} />
+        <About />
+      </main>
 
+      <footer className="mx-auto max-w-7xl px-4 pb-10 text-[12px] leading-relaxed text-ink-3 sm:px-6">
+        <p>
+          Data: Chatzi, Abdallah, Hofsäß, Bischoff, Barber & Marykovskiy (2023), Aventa AV-7 ETH Zurich Research Wind
+          Turbine SCADA and SHM data,{' '}
+          <a href="https://doi.org/10.5281/zenodo.8223010" className="underline underline-offset-2">Zenodo</a>, CC BY 4.0.
+          Method: <a href="https://github.com/IEAWind-Task19/T19IceLossMethod" className="underline underline-offset-2">IEA Wind TCP Task 19</a>.
+        </p>
+        <p className="mt-1">
+          Built by Daniel Clarke · <a href={REPO_URL} className="underline underline-offset-2">Source on GitHub</a>
+        </p>
+      </footer>
     </div>
   )
 }

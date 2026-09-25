@@ -23,7 +23,9 @@ class MqttFeed:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.received = 0
-        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="icing-backend")
+        # A persistent session (clean_session=False) makes the broker queue QoS 1
+        # messages while the backend is down and deliver them when it reconnects.
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="icing-backend", clean_session=False)
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
 

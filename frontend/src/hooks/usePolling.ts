@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { API_BASE } from '../lib/api'
 
 /**
- * usePolling — fetches a URL on an interval and returns the result.
+ * usePolling — fetches an API path on an interval and returns the result.
  *
  * Why a custom hook?
  * Every component that needs live data would otherwise duplicate this
@@ -9,87 +10,62 @@ import { useState, useEffect, useCallback, useRef } from 'react'
  * Writing it once here and importing it is the DRY principle in React.
  *
  * Usage:
- *   const { data, loading, error, refresh } = usePolling<IcingStatus>(
- *     '/api/icing/status',
- *     2000
- *   )
+ *   const { data, error, lastSuccess } = usePolling<Dashboard>('/api/dashboard', 2000)
  */
 
 interface UsePollingResult<T> {
-  data: T | null        // the fetched data, null until first successful fetch
-  loading: boolean      // true on the very first fetch only
-  error: string | null  // error message if fetch failed
-  refresh: () => void   // call this to force an immediate re-fetch
+  data: T | null             // last successful response; kept if a later fetch fails
+  error: string | null       // message from the most recent failed fetch, cleared on success
+  lastSuccess: number | null // Date.now() of the last successful fetch
 }
 
-export function usePolling<T>(
-  url: string,
-  intervalMs: number,
-  enabled: boolean = true   // set to false to pause polling
-): UsePollingResult<T> {
+export function usePolling<T>(path: string, intervalMs: number): UsePollingResult<T> {
+  const [data, setData] = useState<T | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [lastSuccess, setLastSuccess] = useState<number | null>(null)
 
-  const [data, setData]       = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
-
-  // useRef stores a value that persists between renders without
-  // causing a re-render when it changes. Used here to hold the
-  // interval ID so we can clear it on cleanup.
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // useCallback memoises the fetch function so it doesn't get
-  // recreated on every render — important when passing to useEffect.
-  const fetchData = useCallback(async () => {
-    try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const response = await fetch(`${apiBase}${url}`)
-
-      if (!response.ok) {
-        throw new Error(`API error ${response.status}`)
-      }
-
-      const json = await response.json() as T
-      setData(json)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      // Only set loading to false after the first fetch completes
-      setLoading(false)
-    }
-  }, [url])
+  // useRef stores a value that persists between renders without causing a
+  // re-render. Used here to skip a tick if the previous request is still
+  // running (a slow network would otherwise stack up requests).
+  const inFlight = useRef(false)
 
   useEffect(() => {
-    if (!enabled) {
-      // Clear any existing interval when polling is paused
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+    // Set by the cleanup below, so a response that arrives after the
+    // component unmounted (or the path changed) is ignored.
+    let cancelled = false
+
+    async function tick() {
+      if (inFlight.current) return
+      inFlight.current = true
+      try {
+        const response = await fetch(`${API_BASE}${path}`)
+        if (!response.ok) {
+          throw new Error(`API error ${response.status}`)
+        }
+        const json = await response.json() as T
+        if (cancelled) return
+        setData(json)
+        setError(null)
+        setLastSuccess(Date.now())
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error')
+      } finally {
+        inFlight.current = false
       }
-      return
     }
 
-    // Fetch immediately on mount — don't wait for the first interval
-    fetchData()
+    // First fetch straight away, then every intervalMs
+    const first = setTimeout(tick, 0)
+    const id = setInterval(tick, intervalMs)
 
-    // Then fetch every intervalMs milliseconds
-    intervalRef.current = setInterval(fetchData, intervalMs)
-
-    // Cleanup function — React calls this when the component unmounts
-    // or when url/intervalMs/enabled changes. Without this, you'd have
-    // multiple intervals running and fetching after the component is gone.
+    // Cleanup: React calls this on unmount or when path/intervalMs change.
+    // Without it, old intervals would keep fetching in the background.
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+      cancelled = true
+      clearTimeout(first)
+      clearInterval(id)
     }
-  }, [fetchData, intervalMs, enabled])
+  }, [path, intervalMs])
 
-  // The manual refresh function — triggers an immediate fetch
-  // without waiting for the next interval tick
-  const refresh = useCallback(() => {
-    fetchData()
-  }, [fetchData])
-
-  return { data, loading, error, refresh }
+  return { data, error, lastSuccess }
 }
