@@ -1,0 +1,196 @@
+{
+  "dataset": {
+    "samples": 916,
+    "clean_samples": 503,
+    "icing_samples": 413,
+    "reference_samples": 187
+  },
+  "reference_curve": {
+    "bins": 5,
+    "wind_range_ms": [
+      1.76,
+      4.19
+    ]
+  },
+  "config": {
+    "icing_samples": 3,
+    "stop_samples": 6,
+    "temperature_condition": "not applied (sensor broken)"
+  },
+  "icing_period": {
+    "period": [
+      "2022-12-17T16:02:23",
+      "2022-12-20T13:04:26"
+    ],
+    "samples": 413,
+    "samples_judged": 79,
+    "detected": true,
+    "event_classes": [
+      "B"
+    ],
+    "events": 3,
+    "first_confirmed_at": "2022-12-17T17:02:28",
+    "minutes_to_first_confirmation": 60,
+    "judged_samples_inside_events": 72,
+    "share_of_judged_samples_inside_events": 0.911,
+    "energy_lost_kwh": 12.68,
+    "event_list": [
+      {
+        "class": "B",
+        "start": "2022-12-17T16:02:23",
+        "end": "2022-12-17T19:02:40",
+        "samples": 18,
+        "energy_lost_kwh": 1.64,
+        "mean_wind": 2.24
+      },
+      {
+        "class": "B",
+        "start": "2022-12-17T19:12:42",
+        "end": "2022-12-18T01:13:17",
+        "samples": 36,
+        "energy_lost_kwh": 8.19,
+        "mean_wind": 2.82
+      },
+      {
+        "class": "B",
+        "start": "2022-12-18T17:14:54",
+        "end": "2022-12-18T20:15:11",
+        "samples": 18,
+        "energy_lost_kwh": 2.85,
+        "mean_wind": 2.55
+      }
+    ],
+    "baseline_zero_power": {
+      "detected": true,
+      "events": 7,
+      "alarm_samples": 71,
+      "minutes_to_first_alarm": 10
+    }
+  },
+  "clean_days": {
+    "days": 11,
+    "samples": 503,
+    "samples_judged": 190,
+    "hours_judged": 31.7,
+    "false_events": 6,
+    "false_events_by_class": {
+      "A": 5,
+      "B": 1,
+      "C": 0
+    },
+    "false_events_per_24h_judged": 4.55,
+    "samples_in_false_events": 36,
+    "share_of_judged_samples_in_false_events": 0.189,
+    "false_event_list": [
+      {
+        "day": "2022-06-20",
+        "class": "A",
+        "start": "2022-06-20T10:46:39",
+        "samples": 11
+      },
+      {
+        "day": "2022-06-20",
+        "class": "A",
+        "start": "2022-06-20T12:42:05",
+        "samples": 7
+      },
+      {
+        "day": "2022-06-20",
+        "class": "A",
+        "start": "2022-06-20T14:02:13",
+        "samples": 3
+      },
+      {
+        "day": "2022-06-20",
+        "class": "A",
+        "start": "2022-06-20T15:12:20",
+        "samples": 4
+      },
+      {
+        "day": "2022-06-20",
+        "class": "B",
+        "start": "2022-06-20T16:02:25",
+        "samples": 8
+      },
+      {
+        "day": "2022-06-20",
+        "class": "A",
+        "start": "2022-06-20T17:22:33",
+        "samples": 3
+      }
+    ],
+    "by_day": {
+      "2022-03-24": {
+        "samples": 66,
+        "judged": 0,
+        "false_events": 0,
+        "baseline_false_events": 0
+      },
+      "2022-04-08": {
+        "samples": 12,
+        "judged": 0,
+        "false_events": 0,
+        "baseline_false_events": 0
+      },
+      "2022-04-09": {
+        "samples": 24,
+        "judged": 0,
+        "false_events": 0,
+        "baseline_false_events": 2
+      },
+      "2022-05-07": {
+        "samples": 66,
+        "judged": 7,
+        "false_events": 0,
+        "baseline_false_events": 1
+      },
+      "2022-06-20": {
+        "samples": 77,
+        "judged": 59,
+        "false_events": 6,
+        "baseline_false_events": 4
+      },
+      "2022-08-07": {
+        "samples": 35,
+        "judged": 35,
+        "false_events": 0,
+        "baseline_false_events": 0
+      },
+      "2022-08-17": {
+        "samples": 42,
+        "judged": 9,
+        "false_events": 0,
+        "baseline_false_events": 1
+      },
+      "2022-09-03": {
+        "samples": 30,
+        "judged": 14,
+        "false_events": 0,
+        "baseline_false_events": 1
+      },
+      "2022-10-14": {
+        "samples": 113,
+        "judged": 32,
+        "false_events": 0,
+        "baseline_false_events": 3
+      },
+      "2022-11-01": {
+        "samples": 23,
+        "judged": 20,
+        "false_events": 0,
+        "baseline_false_events": 0
+      },
+      "2022-11-04": {
+        "samples": 15,
+        "judged": 14,
+        "false_events": 0,
+        "baseline_false_events": 0
+      }
+    },
+    "baseline_zero_power": {
+      "samples_above_cut_in": 220,
+      "false_events": 12,
+      "false_alarm_samples": 30
+    }
+  }
+}

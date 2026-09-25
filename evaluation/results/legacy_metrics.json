@@ -1,0 +1,39 @@
+{
+  "v1_as_published": {
+    "precision": 0.757,
+    "recall": 1.0,
+    "f1": 0.862,
+    "TP": 308110,
+    "FP": 98825,
+    "FN": 9
+  },
+  "zero_power_rule": {
+    "precision": 0.771,
+    "recall": 1.0,
+    "f1": 0.871,
+    "TP": 308119,
+    "FP": 91266,
+    "FN": 0
+  },
+  "v1_with_idle_readings_kept": {
+    "precision": 0.718,
+    "recall": 1.0,
+    "f1": 0.836,
+    "TP": 308110,
+    "FP": 121068,
+    "FN": 9
+  },
+  "icing_readings": 308119,
+  "icing_readings_with_power_exactly_zero": 308119,
+  "icing_readings_status_codes": {
+    "13": 308119
+  },
+  "negative_readings_in_alarm_share": 0.081,
+  "dates_in_both_folders": [
+    "01_11_2022",
+    "03_09_2022",
+    "04_11_2022",
+    "07_08_2022",
+    "08_04_2022"
+  ]
+}
