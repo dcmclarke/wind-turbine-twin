@@ -1,8 +1,8 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Create non-root user for security
+# Non-root user: a compromised container gets no root access
 RUN groupadd -r turbine && useradd -r -g turbine turbine
 
 COPY requirements.txt .
@@ -10,7 +10,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Give ownership to non-root user
 RUN chown -R turbine:turbine /app
 USER turbine
 

@@ -1,8 +1,10 @@
 __pycache__
-%*.pyc
+*.pyc
 .env
 .git
 venv
 .venv
 .vscode
-test.db
+.pytest_cache
+*.db
+tests

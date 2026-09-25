@@ -1,10 +1,12 @@
-# FastAPI + server (bundles uvicorn, pydantic, starlette)
-fastapi[standard]==0.136.1
+# API + server (fastapi[standard] bundles uvicorn and pydantic)
+fastapi[standard]==0.141.1
 
 # Database
-sqlalchemy==2.0.50
-psycopg2-binary==2.9.9
+sqlalchemy==2.1.0
+psycopg2-binary==2.9.13
 
 # Config
-python-dotenv==1.0.1
-pandas==2.2.2
+python-dotenv==1.2.3
+
+# MQTT ingestion
+paho-mqtt==2.1.0

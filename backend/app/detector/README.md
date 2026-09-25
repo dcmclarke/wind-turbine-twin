@@ -1,6 +1,10 @@
 # Detector
 
-Physics-based icing detection implementing the IEA Wind Task 19 T19 method.
+IEA Wind Task 19 icing detection on 10-minute SCADA data.
 
-- `power_curve.py` — AV-7 power curve model fitted from normal operation data
-- `icing_detector.py` — T19 ratio + temperature gate + persistence filter
+- `reference_curve.py` — clean-blade reference curve (P10/P50/P90 per wind-speed bin), fitted by `data_prep/fit_reference_curve.py`
+- `reference_curve.json` — the fitted curve the service uses
+- `t19.py` — per-sample flags, the Task 19 persistence rule (3 samples for classes A/C, 6 for B), energy lost, and serialisable detector state
+
+The detector has no database or web code, so the evaluation, the tests and
+the API all run exactly the same logic.

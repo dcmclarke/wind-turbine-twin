@@ -1,88 +1,79 @@
-from sqlalchemy import Column, Integer, Float, DateTime, Boolean, String
-from sqlalchemy.orm import DeclarativeBase
+"""
+Database tables.
+
+Table names differ from version 1 (turbine_readings, icing_events) so a
+database that still holds the old tables keeps working; the old ones can be
+dropped.
+"""
+
 from datetime import datetime, timezone
-from pydantic import BaseModel
+
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-# SQLAlchemy Base - all database table classes inherit from this
 class Base(DeclarativeBase):
     pass
 
-# DATABASE TABLES
 
-class TurbineReading(Base):
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Reading(Base):
+    """One 10-minute SCADA summary and what the detector concluded about it."""
+    __tablename__ = "scada_readings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # As recorded by the turbine (local time, no timezone). Unique so a
+    # message delivered twice (MQTT QoS 1 is at-least-once) is stored once.
+    timestamp: Mapped[datetime] = mapped_column(DateTime, unique=True, index=True)
+    wind_mean: Mapped[float] = mapped_column(Float)
+    wind_std: Mapped[float | None] = mapped_column(Float)
+    power_mean: Mapped[float] = mapped_column(Float)
+    rpm_median: Mapped[float | None] = mapped_column(Float)
+    status_mode: Mapped[int | None] = mapped_column(Integer)
+    temperature: Mapped[float | None] = mapped_column(Float)
+
+    # Detector output
+    flag: Mapped[str] = mapped_column(String(20))
+    p10: Mapped[float | None] = mapped_column(Float)
+    p50: Mapped[float | None] = mapped_column(Float)
+    p90: Mapped[float | None] = mapped_column(Float)
+    loss_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("ice_events.id"), index=True)
+
+    source: Mapped[str] = mapped_column(String(10))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class IceEvent(Base):
+    """A confirmed icing event (Task 19 class A, B or C)."""
+    __tablename__ = "ice_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_class: Mapped[str] = mapped_column(String(1))
+    started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime)
+    samples: Mapped[int] = mapped_column(Integer)
+    energy_lost_kwh: Mapped[float] = mapped_column(Float)
+    mean_wind: Mapped[float] = mapped_column(Float)
+
+    readings: Mapped[list[Reading]] = relationship()
+
+    @property
+    def is_active(self) -> bool:
+        return self.ended_at is None
+
+
+class DetectorStateRow(Base):
     """
-    One SCADA reading from the turbine.
-    Stored every time a reading is ingested via POST /api/telemetry.
+    The detector's memory (current run and active event), saved in the same
+    transaction as each reading so a restart resumes exactly where it stopped.
     """
-    __tablename__ = "turbine_readings"
+    __tablename__ = "detector_state"
 
-    id           = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp    = Column(DateTime, nullable=False)
-    wind_speed   = Column(Float, nullable=False)   # m/s  — WM2
-    power_output = Column(Float, nullable=False)   # kW   — WM3
-    rpm          = Column(Float, nullable=True)    # RPM  — WM1 (nullable: not always needed)
-    yaw_angle    = Column(Float, nullable=True)    # deg  — WM4
-    rotor_status = Column(Float, nullable=True)    # code — WM5
-    power_ratio  = Column(Float, nullable=True)    # calculated by detector
-
-class IcingEvent(Base):
-    __tablename__ = "icing_events"
-
-    id            = Column(Integer, primary_key=True, autoincrement=True)
-    started_at    = Column(DateTime, nullable=False)
-    last_seen_at  = Column(DateTime, nullable=False)
-    trigger_count = Column(Integer, nullable=False)
-    is_active     = Column(Boolean, default=True, nullable=False)
-
-
-# PYDANTIC SCHEMAS
-# define what JSON looks like going in/out of API
-# FastAPI uses these to validate requests & serialise responses.
-
-class TelemetryInput(BaseModel):
-    """
-    What the ingestion script sends us per SCADA reading. All fields from the AV-7 WM channels.
-    Timestamp is a string so it survives JSON serialisation cleanly
-    """
-    timestamp:    str    # ISO format: "2022-12-17T16:02:23"
-    wind_speed:   float  # m/s
-    power_output: float  # kW
-    rpm:          float  # RPM
-    yaw_angle:    float  # degrees
-    rotor_status: float  # status code
-
-
-class TelemetryOutput(BaseModel):
-    """What we send back after ingesting a reading."""
-    id:           int
-    timestamp:    datetime
-    wind_speed:   float
-    power_output: float
-    rpm:          float | None
-    yaw_angle:    float | None
-    rotor_status: float | None
-    power_ratio:  float | None
-
-    model_config = {"from_attributes": True}
-
-
-class IcingStatusOutput(BaseModel):
-    """Current icing detection state — returned by GET /api/icing/status."""
-    is_icing:      bool
-    trigger_count: int
-    window_fill:   int
-    last_ratio:    float | None
-
-
-class IcingEventOutput(BaseModel):
-    """A single logged icing event — returned by GET /api/icing/history."""
-    id:            int
-    started_at:    datetime
-    last_seen_at:  datetime
-    trigger_count: int
-    is_active:     bool
-
-    model_config = {"from_attributes": True}
-
-
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
