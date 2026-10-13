@@ -49,6 +49,28 @@ def test_reading_is_not_acked_when_saving_fails(client, feed, monkeypatch):
     assert fake.acked == []
 
 
+def test_database_outage_is_waited_out_so_no_reading_is_skipped(client, feed, monkeypatch):
+    """Moving on to the next reading would leave a gap: the failed one could only come back out of order."""
+    from sqlalchemy.exc import OperationalError
+
+    real_ingest = mqtt_feed.ingest
+    calls = []
+
+    def down_twice(*args, **kwargs):
+        calls.append(1)
+        if len(calls) <= 2:
+            raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+        return real_ingest(*args, **kwargs)
+
+    monkeypatch.setattr(mqtt_feed, "ingest", down_twice)
+    monkeypatch.setattr(mqtt_feed, "DB_RETRY_SECONDS", 0)
+    fake = FakeClient()
+    feed._on_message(fake, None, message(1))
+    assert len(calls) == 3
+    assert fake.acked == [1]
+    assert len(client.get("/api/readings").json()) == 1
+
+
 def test_readings_that_can_never_be_stored_are_acked(client, feed):
     """Redelivering a duplicate, out-of-order or malformed reading would never succeed."""
     fake = FakeClient()
