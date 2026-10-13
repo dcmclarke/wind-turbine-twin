@@ -5,12 +5,15 @@ Validation here stops malformed sensor data before it reaches the detector.
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
 
 
 class ReadingIn(BaseModel):
     """One 10-minute SCADA summary, as published by the edge gateway."""
-    timestamp: datetime
+    # The turbine's own clock, with no timezone, like every stored timestamp.
+    # A timezone-aware value can't be compared with those, so it is rejected
+    # here (422) rather than guessed at.
+    timestamp: NaiveDatetime
     wind_mean: float = Field(ge=0, le=60, description="10-minute mean wind speed, m/s")
     wind_std: float | None = Field(default=None, ge=0)
     power_mean: float = Field(ge=-5, le=20, description="10-minute mean power, kW")

@@ -83,6 +83,27 @@ def test_malformed_reading_is_rejected(client):
     assert r.status_code == 422
 
 
+def test_timezone_aware_timestamp_is_rejected(client):
+    """Stored timestamps are naive turbine time; an aware one can't be compared with them."""
+    for ts in ("2022-12-17T16:00:00+00:00", "2022-12-17T16:00:00Z"):
+        r = client.post("/api/readings", json={"timestamp": ts, "wind_mean": WIND, "power_mean": 1.5})
+        assert r.status_code == 422
+
+
+def test_aware_timestamp_after_naive_one_is_rejected_not_a_crash(client):
+    post(client, 0, power=1.5)
+    aware = (START + STEP).isoformat() + "+00:00"
+    r = client.post("/api/readings", json={"timestamp": aware, "wind_mean": WIND, "power_mean": 1.5})
+    assert r.status_code == 422
+
+
+def test_rejected_aware_reading_does_not_poison_detector_state(client):
+    """An aware first reading used to be saved in the detector's state and break every later one."""
+    aware = START.isoformat() + "+00:00"
+    client.post("/api/readings", json={"timestamp": aware, "wind_mean": WIND, "power_mean": 1.5})
+    assert post(client, 1, power=1.5).status_code == 201
+
+
 def test_http_ingest_can_be_disabled(client, monkeypatch):
     from app.config import get_settings
     from app.routes import readings
