@@ -91,10 +91,6 @@ class Event:
     ended_at: datetime | None = None
 
     @property
-    def is_active(self) -> bool:
-        return self.ended_at is None
-
-    @property
     def mean_wind(self) -> float:
         return self.wind_sum / self.samples if self.samples else 0.0
 

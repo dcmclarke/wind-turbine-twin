@@ -37,7 +37,6 @@ DB_RETRY_SECONDS = 5
 class MqttFeed:
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.received = 0
         # A persistent session (clean_session=False) makes the broker queue QoS 1
         # messages while the backend is down and deliver them when it reconnects.
         # manual_ack: acknowledge in _on_message once saved, not when it returns.
@@ -86,7 +85,6 @@ class MqttFeed:
         try:
             if not self._store(data):
                 return  # shutting down; the broker redelivers it next time
-            self.received += 1
         except DuplicateReading:
             log.info("Duplicate reading %s ignored", data.timestamp)
         except OutOfOrderReading as e:

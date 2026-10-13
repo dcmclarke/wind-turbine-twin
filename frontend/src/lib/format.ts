@@ -25,12 +25,6 @@ export function formatShort(ts: string): string {
   return `${p.d} ${p.month} ${p.hh}:${p.mm}`
 }
 
-/** "16:02" */
-export function formatTime(ts: string): string {
-  const p = parts(ts)
-  return `${p.hh}:${p.mm}`
-}
-
 /** "17 Dec" */
 export function formatDay(ts: string): string {
   const p = parts(ts)
@@ -48,12 +42,6 @@ export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = Math.round(minutes % 60)
   return m ? `${h} h ${m} min` : `${h} h`
-}
-
-/** Seconds since a server timestamp (UTC; the offset may be missing with SQLite). */
-export function secondsSince(iso: string, now: number): number {
-  const hasOffset = /[zZ]|[+-]\d\d:\d\d$/.test(iso)
-  return Math.max(0, Math.round((now - Date.parse(hasOffset ? iso : iso + 'Z')) / 1000))
 }
 
 export function fixed(value: number | null | undefined, digits = 2): string {
