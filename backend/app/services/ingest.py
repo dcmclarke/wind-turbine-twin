@@ -12,6 +12,7 @@ import threading
 from collections.abc import Iterable
 
 from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.detector.reference_curve import ReferenceCurve
@@ -23,7 +24,9 @@ CURVE = ReferenceCurve.load()
 CFG = T19Config()
 
 # One writer at a time: the demo feed or MQTT thread, and HTTP requests,
-# must not interleave updates to the detector's state.
+# must not interleave updates to the detector's state. This only covers one
+# process; across processes, the unique timestamp in the database still
+# stops a reading being stored twice (see ingest).
 _write_lock = threading.Lock()
 
 
@@ -118,18 +121,28 @@ def _copy_event(event: Event, row: IceEvent) -> None:
 def ingest(db: Session, data: ReadingIn, source: str) -> Reading:
     """Process and store one reading. Raises DuplicateReading or OutOfOrderReading."""
     with _write_lock:
-        if db.scalar(select(Reading.id).where(Reading.timestamp == data.timestamp)) is not None:
+        if _is_stored(db, data):
             raise DuplicateReading(f"Reading at {data.timestamp} already stored")
         ingestor = _Ingestor(db)
         try:
             reading = ingestor.apply(data, source)
             ingestor.save_state()
             db.commit()
+        except IntegrityError:
+            db.rollback()
+            # Another process stored the same reading since the check above
+            if _is_stored(db, data):
+                raise DuplicateReading(f"Reading at {data.timestamp} already stored") from None
+            raise
         except Exception:
             db.rollback()
             raise
         db.refresh(reading)
         return reading
+
+
+def _is_stored(db: Session, data: ReadingIn) -> bool:
+    return db.scalar(select(Reading.id).where(Reading.timestamp == data.timestamp)) is not None
 
 
 def ingest_many(db: Session, items: Iterable[ReadingIn], source: str) -> int:

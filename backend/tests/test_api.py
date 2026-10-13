@@ -132,3 +132,21 @@ def test_reference_curve_endpoint(client):
     assert len(body["bins"]) >= 3
     assert body["wind_range"][0] < body["wind_range"][1]
     assert body["stop_samples"] == 6
+
+
+def test_duplicate_stored_by_another_worker_meanwhile_is_a_409(client, monkeypatch):
+    """The lock in ingest() is per process; the database's unique timestamp must catch the rest."""
+    from app.database import SessionLocal
+    from app.models import Reading
+    from app.services import ingest
+
+    real_apply = ingest._Ingestor.apply
+
+    def other_worker_got_there_first(self, data, source):
+        with SessionLocal() as other:
+            other.add(Reading(timestamp=data.timestamp, wind_mean=WIND, power_mean=1.5, flag="normal", source="http"))
+            other.commit()
+        return real_apply(self, data, source)
+
+    monkeypatch.setattr(ingest._Ingestor, "apply", other_worker_got_there_first)
+    assert post(client, 0, power=1.5).status_code == 409
