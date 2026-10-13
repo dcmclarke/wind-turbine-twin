@@ -58,7 +58,7 @@ decisions stay in the log so the reasoning behind changes is visible.
 
 **Consequences:**
 
-- One request returns status, recent readings and events, so the panels always agree with each other.
+- One request returns status, recent readings and events, so the panels normally agree. The queries behind it don't share a database snapshot, so a reading stored mid-request can appear in one panel a poll before another.
 - Polling is simpler than WebSockets and fast enough at one new reading every 2 seconds. It would not suit sub-second data.
 
 ---
@@ -158,8 +158,9 @@ Version 1 picked the threshold from a sweep over 0.1–0.9 on the same data it t
 **Consequences:**
 
 - A restart resumes exactly where it stopped. A test checks that a detector restored mid-stream produces the same results as one that never stopped.
-- If any part of a write fails, none of it is saved, so the stored events and the detector's state can't disagree.
+- If any part of a write fails, none of it is saved, so a failure part-way can't leave the stored events and the detector's state out of step.
 - The lock serialises writes. That is plenty for one turbine sending one reading every 10 minutes; a wind farm would need state per turbine rather than one global detector.
+- The lock only covers one process. With several, the unique timestamp still stops a reading being stored twice, but two different readings processed at the same moment could overwrite each other's detector state. The backend runs as a single process.
 
 ---
 

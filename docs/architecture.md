@@ -81,7 +81,7 @@ default is `none`, because demo mode wipes the database on every loop). The fron
 
 `.github/workflows/ci.yml` runs on every push and pull request to `main`:
 
-- **Backend:** 39 pytest tests covering the reference curve, detector rules, restart safety, API behaviour, duplicates and ordering.
+- **Backend:** 50 pytest tests covering the reference curve, detector rules, restart safety, API behaviour, duplicates, ordering and MQTT acknowledgement, run on both SQLite and PostgreSQL.
 - **Evaluation:** reruns the full evaluation on the committed dataset and fails if any result differs from `evaluation/results/metrics.json`.
-- **Frontend:** ESLint and a production build, which includes type checking.
+- **Frontend:** ESLint, Vitest unit tests and a production build, which includes type checking.
 - **Docker:** builds the backend image.

@@ -1,6 +1,8 @@
 """
 Pydantic schemas: the JSON going in and out of the API and over MQTT.
-Validation here stops malformed sensor data before it reaches the detector.
+Validation here rejects malformed or out-of-range values (a negative wind
+speed, a timezone-aware timestamp) before they reach the detector. It can't
+catch a reading that is plausible but wrong.
 """
 
 from datetime import datetime

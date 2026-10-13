@@ -3,8 +3,9 @@ Ingestion: run readings through the detector and store the outcome.
 
 For each reading, everything it causes — the reading itself, any event it
 opens, extends or closes, and the detector's updated memory — is committed
-in one transaction. If anything fails, none of it is saved, so the stored
-events and the detector's state can never disagree.
+in one transaction. If anything fails, none of it is saved, so a failure
+part-way can't leave the stored events and the detector's state out of
+step. This assumes one writer at a time (see _write_lock).
 """
 
 import json
