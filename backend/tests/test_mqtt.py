@@ -57,3 +57,14 @@ def test_readings_that_can_never_be_stored_are_acked(client, feed):
     feed._on_message(fake, None, message(3, timestamp="2022-12-17T15:00:00"))  # out of order
     feed._on_message(fake, None, message(4, wind_mean=-1))                    # malformed
     assert fake.acked == [1, 2, 3, 4]
+
+
+def test_health_waits_for_the_mqtt_subscription(client, feed, monkeypatch):
+    """Docker Compose starts the edge publisher once /health is OK, so it must mean 'subscribed'."""
+    from app import feeds
+
+    monkeypatch.setattr(feeds, "running", feed)
+    assert client.get("/health").status_code == 503
+
+    feed._on_subscribe(FakeClient(), None, 1, [], None)
+    assert client.get("/health").status_code == 200

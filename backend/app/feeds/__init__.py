@@ -28,6 +28,11 @@ def stop() -> None:
         running = None
 
 
+def ready() -> bool:
+    """False until the MQTT feed's subscription is confirmed; other feeds are ready at once."""
+    return getattr(running, "subscribed", True)
+
+
 def describe(settings: Settings) -> FeedOut:
     feed = FeedOut(mode=settings.ingest_mode)
     if settings.ingest_mode == "demo" and running is not None:

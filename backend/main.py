@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import feeds
 from app.config import get_settings
@@ -55,4 +56,8 @@ async def root():
 
 @app.get("/health")
 async def health():
+    if not feeds.ready():
+        # Docker Compose holds the edge publisher back until this returns 200,
+        # so no reading is published before anyone is subscribed to receive it
+        return JSONResponse(status_code=503, content={"status": "waiting for MQTT subscription"})
     return {"status": "ok"}

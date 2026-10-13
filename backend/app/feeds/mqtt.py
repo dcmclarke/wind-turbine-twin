@@ -37,7 +37,11 @@ class MqttFeed:
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="icing-backend",
                                   clean_session=False, manual_ack=True)
         self.client.on_connect = self._on_connect
+        self.client.on_subscribe = self._on_subscribe
         self.client.on_message = self._on_message
+        # Once the broker has confirmed the subscription it queues readings for
+        # this session, even while the backend is down. Reported by /health.
+        self.subscribed = False
 
     def start(self) -> None:
         s = self.settings
@@ -54,6 +58,12 @@ class MqttFeed:
             log.error("MQTT connection refused: %s", reason_code)
             return
         client.subscribe(self.settings.mqtt_topic, qos=1)
+
+    def _on_subscribe(self, client, userdata, mid, reason_code_list, properties):
+        if any(rc.is_failure for rc in reason_code_list):
+            log.error("MQTT subscription refused: %s", reason_code_list)
+            return
+        self.subscribed = True
         log.info("Subscribed to %s", self.settings.mqtt_topic)
 
     def _on_message(self, client, userdata, message):
