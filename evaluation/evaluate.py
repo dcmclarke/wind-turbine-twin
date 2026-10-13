@@ -41,14 +41,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 from app.dataset import Row, is_reference, load_rows  # noqa: E402
 from app.detector.reference_curve import ReferenceCurve  # noqa: E402
-from app.detector.t19 import EVENT_CLASS, Event, Flag, T19Config, detect  # noqa: E402
+from app.detector.t19 import EVENT_CLASS, SAMPLE_LENGTH, Event, Flag, T19Config, detect  # noqa: E402
 
 RESULTS_DIR = Path(__file__).parent / "results"
 METRICS_PATH = RESULTS_DIR / "metrics.json"
 
 CFG = T19Config()
 CUT_IN = 2.0                       # m/s, AV-7 specification
-SAMPLE = timedelta(minutes=10)
+SAMPLE = SAMPLE_LENGTH
 HOURS_PER_SAMPLE = SAMPLE.total_seconds() / 3600
 
 
