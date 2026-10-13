@@ -63,6 +63,7 @@ class DemoFeed(threading.Thread):
         live = [r for r in self.rows if r.timestamp >= self.live_from]
 
         with SessionLocal() as db:
+            log.warning("Demo loop %d: deleting all readings and events to start the replay", self.loop)
             reset(db)
             ingest_many(db, (to_reading(r) for r in history), source="demo")
         self.position = len(history)

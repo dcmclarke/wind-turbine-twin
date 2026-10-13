@@ -102,12 +102,14 @@ http://localhost:8000/docs. The edge publisher streams the dataset over MQTT
 at one reading every 2 seconds. Readings already in the database are skipped
 on a second run; `docker compose down -v` starts fresh.
 
-**Backend on its own** (Python 3.12+; SQLite by default, replaying the demo feed in-process):
+**Backend on its own** (Python 3.12+; SQLite by default). `INGEST_MODE=demo`
+replays the dataset in-process, as the hosted demo does; it deletes all
+readings and events at the start of every loop, so it is off by default.
 
 ```sh
 cd backend
 pip install -r requirements-dev.txt
-uvicorn main:app --reload
+INGEST_MODE=demo uvicorn main:app --reload
 pytest
 ```
 
