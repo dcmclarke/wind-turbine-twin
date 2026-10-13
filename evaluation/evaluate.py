@@ -15,7 +15,10 @@ Method:
 
     The comparison rule ("zero-power baseline") raises an alarm for every
     10-minute sample with power below 1 % of rated and wind at or above the
-    2 m/s cut-in. Consecutive alarms count as one event.
+    2 m/s cut-in. Consecutive alarms count as one event. It is scored twice:
+    on every sample above cut-in, and on only the samples the detector
+    judged (inside the reference curve's wind range). The second is the
+    like-for-like comparison.
 
     Results are event-level first. With a single icing event in the public
     data, per-sample precision/recall would mostly measure how long that one
@@ -95,6 +98,8 @@ def evaluate_clean_days(rows: list[Row]) -> dict:
     false_events: list[dict] = []
     in_range = flagged = 0
     baseline_events = baseline_samples = 0
+    baseline_judged_events = 0
+    baseline_judged_days = []
     by_day = {}
 
     for day in days:
@@ -119,8 +124,13 @@ def evaluate_clean_days(rows: list[Row]) -> dict:
         alarms = zero_power_alarms(test)
         baseline_samples += len(alarms)
         baseline_events += len(group_runs(alarms))
+        judged_alarm_runs = group_runs(zero_power_alarms(judged))
+        baseline_judged_events += len(judged_alarm_runs)
+        if judged_alarm_runs:
+            baseline_judged_days.append(day)
         by_day[day] = {"samples": len(test), "judged": len(judged), "false_events": len(events),
-                       "baseline_false_events": len(group_runs(alarms))}
+                       "baseline_false_events": len(group_runs(alarms)),
+                       "baseline_false_events_judged": len(judged_alarm_runs)}
 
     judged_hours = in_range * HOURS_PER_SAMPLE
     above_cut_in = sum(1 for r in clean if r.wind_mean >= CUT_IN)
@@ -140,6 +150,9 @@ def evaluate_clean_days(rows: list[Row]) -> dict:
             "samples_above_cut_in": above_cut_in,
             "false_events": baseline_events,
             "false_alarm_samples": baseline_samples,
+            # Like-for-like: only the samples the detector judged
+            "false_events_judged": baseline_judged_events,
+            "days_with_false_events_judged": len(baseline_judged_days),
         },
     }
 
@@ -161,6 +174,8 @@ def evaluate_icing(rows: list[Row], curve: ReferenceCurve) -> tuple[dict, list, 
     alarms = zero_power_alarms(icing)
     baseline_runs = group_runs(alarms)
     baseline_delay = (alarms[0] + SAMPLE - period_start) if alarms else None
+    judged_alarms = zero_power_alarms(judged)
+    judged_delay = (judged_alarms[0] + SAMPLE - period_start) if judged_alarms else None
 
     metrics = {
         "period": [period_start.isoformat(), (icing[-1].timestamp + SAMPLE).isoformat()],
@@ -184,6 +199,9 @@ def evaluate_icing(rows: list[Row], curve: ReferenceCurve) -> tuple[dict, list, 
             "events": len(baseline_runs),
             "alarm_samples": len(alarms),
             "minutes_to_first_alarm": round(baseline_delay.total_seconds() / 60) if baseline_delay else None,
+            # Like-for-like: only the samples the detector judged
+            "events_judged": len(group_runs(judged_alarms)),
+            "minutes_to_first_alarm_judged": round(judged_delay.total_seconds() / 60) if judged_delay else None,
         },
     }
     return metrics, results, events
@@ -308,7 +326,10 @@ def summarise(m: dict) -> None:
     print("=== Clean days (leave-one-day-out) ===")
     print(f"  {clean['false_events']} false events {clean['false_events_by_class']} in {clean['hours_judged']} judged hours "
           f"-> {clean['false_events_per_24h_judged']} per 24 h")
-    print(f"  zero-power baseline: {clean['baseline_zero_power']['false_events']} false events")
+    base = clean["baseline_zero_power"]
+    print(f"  zero-power baseline: {base['false_events']} false events on all samples above cut-in, "
+          f"{base['false_events_judged']} on the samples the detector judged "
+          f"({base['days_with_false_events_judged']} days)")
     for day, d in clean["by_day"].items():
         print(f"    {day}: {d}")
 

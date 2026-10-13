@@ -64,7 +64,9 @@
       "detected": true,
       "events": 7,
       "alarm_samples": 71,
-      "minutes_to_first_alarm": 10
+      "minutes_to_first_alarm": 10,
+      "events_judged": 7,
+      "minutes_to_first_alarm_judged": 10
     }
   },
   "clean_days": {
@@ -124,73 +126,86 @@
         "samples": 66,
         "judged": 0,
         "false_events": 0,
-        "baseline_false_events": 0
+        "baseline_false_events": 0,
+        "baseline_false_events_judged": 0
       },
       "2022-04-08": {
         "samples": 12,
         "judged": 0,
         "false_events": 0,
-        "baseline_false_events": 0
+        "baseline_false_events": 0,
+        "baseline_false_events_judged": 0
       },
       "2022-04-09": {
         "samples": 24,
         "judged": 0,
         "false_events": 0,
-        "baseline_false_events": 2
+        "baseline_false_events": 2,
+        "baseline_false_events_judged": 0
       },
       "2022-05-07": {
         "samples": 66,
         "judged": 7,
         "false_events": 0,
-        "baseline_false_events": 1
+        "baseline_false_events": 1,
+        "baseline_false_events_judged": 1
       },
       "2022-06-20": {
         "samples": 77,
         "judged": 59,
         "false_events": 6,
-        "baseline_false_events": 4
+        "baseline_false_events": 4,
+        "baseline_false_events_judged": 4
       },
       "2022-08-07": {
         "samples": 35,
         "judged": 35,
         "false_events": 0,
-        "baseline_false_events": 0
+        "baseline_false_events": 0,
+        "baseline_false_events_judged": 0
       },
       "2022-08-17": {
         "samples": 42,
         "judged": 9,
         "false_events": 0,
-        "baseline_false_events": 1
+        "baseline_false_events": 1,
+        "baseline_false_events_judged": 1
       },
       "2022-09-03": {
         "samples": 30,
         "judged": 14,
         "false_events": 0,
-        "baseline_false_events": 1
+        "baseline_false_events": 1,
+        "baseline_false_events_judged": 1
       },
       "2022-10-14": {
         "samples": 113,
         "judged": 32,
         "false_events": 0,
-        "baseline_false_events": 3
+        "baseline_false_events": 3,
+        "baseline_false_events_judged": 3
       },
       "2022-11-01": {
         "samples": 23,
         "judged": 20,
         "false_events": 0,
-        "baseline_false_events": 0
+        "baseline_false_events": 0,
+        "baseline_false_events_judged": 0
       },
       "2022-11-04": {
         "samples": 15,
         "judged": 14,
         "false_events": 0,
-        "baseline_false_events": 0
+        "baseline_false_events": 0,
+        "baseline_false_events_judged": 0
       }
     },
     "baseline_zero_power": {
       "samples_above_cut_in": 220,
       "false_events": 12,
-      "false_alarm_samples": 30
+      "false_alarm_samples": 30,
+      "false_events_judged": 10,
+      "days_with_false_events_judged": 5
     }
   }
 }
