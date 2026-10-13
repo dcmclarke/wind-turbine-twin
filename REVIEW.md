@@ -248,9 +248,8 @@ detector's 6 on 1 day. The detector still does better. Both figures are in
 
 ## Not verified
 
-- **GitHub Actions** hadn't run on this branch when this was written. Check
-  the PR's checks, especially the new PostgreSQL leg. (The same tests passed
-  locally against a `postgres:17` container.)
+- **GitHub Actions** passed on the draft PR, both backend legs included. This
+  list covers what CI doesn't.
 - **The Render environment.** I can't see whether `INGEST_MODE` is already set
   there. See the note at the top.
 - **Python 3.12** locally: everything ran on 3.14.5. CI covers 3.12.
