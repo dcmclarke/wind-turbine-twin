@@ -4,6 +4,14 @@ MQTT feed: subscribe to 10-minute SCADA summaries from the edge gateway.
 QoS 1 means the broker delivers each message at least once, so the same
 reading can arrive twice after a reconnect. Readings are unique by
 timestamp, so a repeat is logged and ignored rather than stored again.
+
+Each message is acknowledged only after its reading is saved (or when it
+can never be saved: malformed, duplicate, out of order). A reading that
+fails to save, say because the database is down, stays unacknowledged and
+the broker redelivers it when the backend reconnects. Limitation: the
+broker only redelivers on reconnect, so if a single reading fails while
+later ones succeed, the redelivered copy arrives out of order and is
+dropped. This protects against outages, not one-off failures.
 """
 
 import logging
@@ -25,7 +33,9 @@ class MqttFeed:
         self.received = 0
         # A persistent session (clean_session=False) makes the broker queue QoS 1
         # messages while the backend is down and deliver them when it reconnects.
-        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="icing-backend", clean_session=False)
+        # manual_ack: acknowledge in _on_message once saved, not when it returns.
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="icing-backend",
+                                  clean_session=False, manual_ack=True)
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
 
@@ -51,6 +61,7 @@ class MqttFeed:
             data = ReadingIn.model_validate_json(message.payload)
         except ValidationError as e:
             log.warning("Rejected malformed reading: %s", e.errors()[0]["msg"])
+            client.ack(message.mid, message.qos)
             return
 
         try:
@@ -62,4 +73,7 @@ class MqttFeed:
         except OutOfOrderReading as e:
             log.warning("Out-of-order reading ignored: %s", e)
         except Exception:
+            # Not acknowledged, so the broker keeps it and redelivers it
             log.exception("Failed to store reading %s", data.timestamp)
+            return
+        client.ack(message.mid, message.qos)
