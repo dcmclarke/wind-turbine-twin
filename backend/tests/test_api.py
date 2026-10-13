@@ -104,13 +104,18 @@ def test_rejected_aware_reading_does_not_poison_detector_state(client):
     assert post(client, 1, power=1.5).status_code == 201
 
 
-def test_http_ingest_can_be_disabled(client, monkeypatch):
-    from app.config import get_settings
-    from app.routes import readings
+def test_http_ingest_can_be_disabled(client):
+    from dataclasses import replace
 
-    locked = get_settings().__class__(**{**get_settings().__dict__, "allow_http_ingest": False})
-    monkeypatch.setattr(readings, "get_settings", lambda: locked)
-    assert post(client, 0, power=1.5).status_code == 403
+    from app.config import get_settings
+    from main import app
+
+    locked = replace(get_settings(), allow_http_ingest=False)
+    app.dependency_overrides[get_settings] = lambda: locked
+    try:
+        assert post(client, 0, power=1.5).status_code == 403
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_reading_outside_reference_range_is_not_judged(client):
