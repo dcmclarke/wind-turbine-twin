@@ -75,6 +75,9 @@ export const API_BASE: string = import.meta.env.VITE_API_URL || 'http://localhos
 
 export const REPO_URL = 'https://github.com/dcmclarke/wind-turbine-twin'
 
+/** Readings the dashboard fetches and draws: 24 hours of 10-minute readings. */
+export const READINGS_SHOWN = 144
+
 /**
  * GET a JSON endpoint. Gives up after timeoutMs: a request that never
  * answers would otherwise hold usePolling's in-flight guard forever, and

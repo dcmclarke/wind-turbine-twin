@@ -2,6 +2,7 @@ import {
   Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { Reading, ReferenceCurve } from '../lib/api'
+import { READINGS_SHOWN } from '../lib/api'
 import type { ReadingKind } from '../lib/detector'
 import { KIND_STYLE, readingKind } from '../lib/detector'
 import { fixed, formatRecorded } from '../lib/format'
@@ -12,7 +13,6 @@ interface Props {
   readings: Reading[]
 }
 
-const SHOWN = 144 // the last 24 hours of turbine time
 const KINDS: ReadingKind[] = ['normal', 'flagged', 'event', 'unjudged']
 const AXIS_TICK = { fill: 'var(--ink-3)', fontSize: 11 }
 
@@ -33,7 +33,7 @@ function dotShape(color: string, big = false) {
 }
 
 export default function PowerCurveView({ curve, readings }: Props) {
-  const recent = readings.slice(-SHOWN)
+  const recent = readings.slice(-READINGS_SHOWN)
   const dots: Dot[] = recent.map((r) => ({
     wind: r.wind_mean, power: r.power_mean, ts: r.timestamp, kind: readingKind(r.flag, r.event_id),
   }))
