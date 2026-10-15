@@ -2,10 +2,12 @@
 Settings, read once from environment variables (or a local .env file).
 
 INGEST_MODE decides where 10-minute readings come from:
-    demo  replay the bundled AV-7 dataset in a loop, in-process (default;
-          used by the hosted demo, which has no MQTT broker)
-    mqtt  subscribe to an MQTT broker; the edge publisher sends readings
     none  no automatic source; readings arrive only via POST /api/readings
+          (default)
+    mqtt  subscribe to an MQTT broker; the edge publisher sends readings
+    demo  replay the bundled AV-7 dataset in a loop, in-process (used by the
+          hosted demo, which has no MQTT broker). It deletes every reading
+          and event at the start of each loop, so it is never the default.
 """
 
 import os
@@ -45,7 +47,7 @@ def get_settings() -> Settings:
         if url.startswith(prefix):
             url = "postgresql+psycopg://" + url[len(prefix):]
 
-    mode = os.getenv("INGEST_MODE", "demo").strip().lower()
+    mode = os.getenv("INGEST_MODE", "none").strip().lower()
     if mode not in ("demo", "mqtt", "none"):
         raise ValueError(f"INGEST_MODE must be demo, mqtt or none, not {mode!r}")
 

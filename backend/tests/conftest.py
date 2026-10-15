@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 
-# Configure the app before it is imported: throwaway SQLite database,
-# no background feed, HTTP ingestion on.
+# Configure the app before it is imported: throwaway database, no
+# background feed, HTTP ingestion on. The tests delete every row, so they
+# never use DATABASE_URL: SQLite by default, or TEST_DATABASE_URL if set
+# (CI sets it to run the same tests on PostgreSQL).
 _tmp = Path(tempfile.mkdtemp())
-os.environ["DATABASE_URL"] = f"sqlite:///{(_tmp / 'test.db').as_posix()}"
+os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL") or f"sqlite:///{(_tmp / 'test.db').as_posix()}"
 os.environ["INGEST_MODE"] = "none"
 os.environ["ALLOW_HTTP_INGEST"] = "true"
 

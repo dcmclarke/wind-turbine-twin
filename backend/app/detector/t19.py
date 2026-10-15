@@ -91,18 +91,14 @@ class Event:
     ended_at: datetime | None = None
 
     @property
-    def is_active(self) -> bool:
-        return self.ended_at is None
-
-    @property
     def mean_wind(self) -> float:
         return self.wind_sum / self.samples if self.samples else 0.0
 
-    def add(self, sample: Sample, loss_kwh: float) -> None:
-        self.last_seen_at = sample.timestamp
+    def add(self, timestamp: datetime, wind_mean: float, loss_kwh: float) -> None:
+        self.last_seen_at = timestamp
         self.samples += 1
         self.energy_lost_kwh += loss_kwh
-        self.wind_sum += sample.wind_mean
+        self.wind_sum += wind_mean
 
     def close(self) -> None:
         self.ended_at = self.last_seen_at + SAMPLE_LENGTH
@@ -213,7 +209,7 @@ class IcingDetector:
         opened = None
 
         if s.active is not None and EVENT_CLASS.get(flag) == s.active.event_class:
-            s.active.add(sample, loss)
+            s.active.add(sample.timestamp, sample.wind_mean, loss)
         else:
             if s.active is not None:
                 closed = self._close_active()
@@ -251,10 +247,7 @@ class IcingDetector:
 
         event = Event(event_class=EVENT_CLASS[flag], started_at=s.run[0].timestamp, last_seen_at=s.run[0].timestamp)
         for r in s.run:
-            event.last_seen_at = r.timestamp
-            event.samples += 1
-            event.energy_lost_kwh += r.loss_kwh
-            event.wind_sum += r.wind_mean
+            event.add(r.timestamp, r.wind_mean, r.loss_kwh)
         s.active = event
         self._reset_run()
         return event

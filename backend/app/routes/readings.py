@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.database import get_db
 from app.models import IceEvent, Reading
 from app.schemas import EventOut, ReadingIn, ReadingOut
@@ -33,14 +33,14 @@ def get_events(limit: int = Query(50, ge=1, le=500), db: Session = Depends(get_d
 
 
 @router.post("/readings", response_model=ReadingOut, status_code=201)
-def post_reading(data: ReadingIn, db: Session = Depends(get_db)):
+def post_reading(data: ReadingIn, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
     """
     Ingest one 10-minute reading over HTTP.
 
     Disabled unless ALLOW_HTTP_INGEST=true, so the public demo can't be
     fed made-up data. The normal path is MQTT.
     """
-    if not get_settings().allow_http_ingest:
+    if not settings.allow_http_ingest:
         raise HTTPException(status_code=403, detail="HTTP ingestion is disabled on this server")
     try:
         return ingest(db, data, source="http")

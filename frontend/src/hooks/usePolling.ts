@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { API_BASE } from '../lib/api'
+import { API_BASE, fetchJson } from '../lib/api'
+
+// Longer than any normal response, short enough that a hung request shows
+// up as an error (and the header says so) within a few polls
+const REQUEST_TIMEOUT_MS = 10_000
 
 /**
  * usePolling — fetches an API path on an interval and returns the result.
@@ -38,11 +42,7 @@ export function usePolling<T>(path: string, intervalMs: number): UsePollingResul
       if (inFlight.current) return
       inFlight.current = true
       try {
-        const response = await fetch(`${API_BASE}${path}`)
-        if (!response.ok) {
-          throw new Error(`API error ${response.status}`)
-        }
-        const json = await response.json() as T
+        const json = await fetchJson<T>(`${API_BASE}${path}`, REQUEST_TIMEOUT_MS)
         if (cancelled) return
         setData(json)
         setError(null)

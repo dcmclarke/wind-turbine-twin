@@ -52,7 +52,7 @@ export default function About() {
             <li>
               <span className="font-semibold text-ink-1">6 false events across 11 clean days, all on one day.</span>{' '}
               On 20 June 2022 the turbine ran at about 70% of expected power all day, for reasons the data doesn't
-              show. The zero-output rule raised 12 false events spread over 6 days.
+              show. On the same readings, the zero-output rule raised 10 false events spread over 5 days.
             </li>
             <li>
               <span className="font-semibold text-ink-1">Honest about its limits.</span> The turbine's temperature

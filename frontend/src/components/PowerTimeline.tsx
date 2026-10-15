@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { Reading } from '../lib/api'
+import { READINGS_SHOWN } from '../lib/api'
 import { FLAG_LABEL, KIND_STYLE, readingKind } from '../lib/detector'
 import { fixed, formatDay, formatRecorded, formatShort, recordedMs } from '../lib/format'
 import Panel from './Panel'
@@ -62,10 +63,9 @@ function Key({ swatch, label }: { swatch: 'line-1' | 'line-2' | 'band' | 'event'
   return <span className="inline-flex items-center gap-1.5">{shape}{label}</span>
 }
 
-const SHOWN = 144 // 24 hours of turbine time
 
 export default function PowerTimeline({ readings: all, referenceRange: [low, high] }: Props) {
-  const readings = all.slice(-SHOWN)
+  const readings = all.slice(-READINGS_SHOWN)
   if (readings.length < 2) {
     return (
       <Panel title="Power against the clean-blade expectation">

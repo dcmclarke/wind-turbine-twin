@@ -74,3 +74,25 @@ export interface ReferenceCurve {
 export const API_BASE: string = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export const REPO_URL = 'https://github.com/dcmclarke/wind-turbine-twin'
+
+/** Readings the dashboard fetches and draws: 24 hours of 10-minute readings. */
+export const READINGS_SHOWN = 144
+
+/**
+ * GET a JSON endpoint. Gives up after timeoutMs: a request that never
+ * answers would otherwise hold usePolling's in-flight guard forever, and
+ * the dashboard would freeze while still looking connected.
+ */
+export async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}`)
+    }
+    return await response.json() as T
+  } catch (err) {
+    // AbortSignal.timeout rejects with a DOMException named TimeoutError
+    if (err instanceof Error && err.name === 'TimeoutError') throw new Error('Request timed out', { cause: err })
+    throw err
+  }
+}

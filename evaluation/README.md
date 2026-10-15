@@ -1,9 +1,9 @@
 # Evaluation
 
 The detector finds the one icing event in the public data, an hour after it
-starts, and raises false events on one clean day out of eleven. A rule that
-flags any zero-output reading finds the event sooner but raises twice as many
-false events, spread across six days.
+starts, and raises 6 false events, all on one clean day. A rule that flags
+any zero-output reading finds the event sooner but, scored on the same
+readings, raises 10 false events spread across five days.
 
 Everything here is produced by `evaluate.py` from the committed 10-minute
 dataset. CI reruns it with `--check` and fails if any number changes.
@@ -62,20 +62,24 @@ The detector's three events:
 
 ### Clean days
 
-| Day | Readings | Judged | Detector false events | Zero-output false events |
-| :-- | --: | --: | --: | --: |
-| 24 Mar | 66 | 0 | 0 | 0 |
-| 8 Apr | 12 | 0 | 0 | 0 |
-| 9 Apr | 24 | 0 | 0 | 2 |
-| 7 May | 66 | 7 | 0 | 1 |
-| **20 Jun** | 77 | 59 | **6** | 4 |
-| 7 Aug | 35 | 35 | 0 | 0 |
-| 17 Aug | 42 | 9 | 0 | 1 |
-| 3 Sep | 30 | 14 | 0 | 1 |
-| 14 Oct | 113 | 32 | 0 | 3 |
-| 1 Nov | 23 | 20 | 0 | 0 |
-| 4 Nov | 15 | 14 | 0 | 0 |
-| **Total** | 503 | 190 | **6** | **12** |
+| Day | Readings | Judged | Detector false events | Zero-output, judged readings | Zero-output, all readings |
+| :-- | --: | --: | --: | --: | --: |
+| 24 Mar | 66 | 0 | 0 | 0 | 0 |
+| 8 Apr | 12 | 0 | 0 | 0 | 0 |
+| 9 Apr | 24 | 0 | 0 | 0 | 2 |
+| 7 May | 66 | 7 | 0 | 1 | 1 |
+| **20 Jun** | 77 | 59 | **6** | 4 | 4 |
+| 7 Aug | 35 | 35 | 0 | 0 | 0 |
+| 17 Aug | 42 | 9 | 0 | 1 | 1 |
+| 3 Sep | 30 | 14 | 0 | 1 | 1 |
+| 14 Oct | 113 | 32 | 0 | 3 | 3 |
+| 1 Nov | 23 | 20 | 0 | 0 | 0 |
+| 4 Nov | 15 | 14 | 0 | 0 | 0 |
+| **Total** | 503 | 190 | **6** | **10** | 12 |
+
+The like-for-like comparison is the "judged readings" column: the rule scored
+on only the readings the detector judged. The "all readings" column also
+counts readings outside the reference range, which the detector leaves alone.
 
 On 9 April the zero-output rule fires while the turbine is stopped in 11–17 m/s wind, mostly above its 14 m/s cut-out. The
 detector marks those readings "not judged" because there is no reference data

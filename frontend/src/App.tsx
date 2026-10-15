@@ -1,6 +1,6 @@
 import { usePolling } from './hooks/usePolling'
 import type { Dashboard, ReferenceCurve } from './lib/api'
-import { REPO_URL } from './lib/api'
+import { READINGS_SHOWN, REPO_URL } from './lib/api'
 
 import About from './components/About'
 import EventLog from './components/EventLog'
@@ -15,7 +15,7 @@ import WakingUp from './components/WakingUp'
 export default function App() {
   // One request brings status, recent readings and events; the demo adds a
   // reading every 2 seconds, so poll at the same rate.
-  const dashboard = usePolling<Dashboard>('/api/dashboard?limit=144', 2000)
+  const dashboard = usePolling<Dashboard>(`/api/dashboard?limit=${READINGS_SHOWN}`, 2000)
   const curve = usePolling<ReferenceCurve>('/api/reference-curve', 5 * 60 * 1000)
 
   if (!dashboard.data) return <WakingUp error={dashboard.error} />

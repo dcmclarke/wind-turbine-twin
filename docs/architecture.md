@@ -62,7 +62,7 @@ Interactive documentation is at `/docs` on a running backend.
 | Variable | Default | Used for |
 | :-- | :-- | :-- |
 | `DATABASE_URL` | `sqlite:///./local.db` | Any `postgres://` or `postgresql://` URL is rewritten to use psycopg 3 |
-| `INGEST_MODE` | `demo` | `demo`, `mqtt` or `none` |
+| `INGEST_MODE` | `none` | `none`, `mqtt` or `demo` (`demo` deletes all readings and events on every loop) |
 | `DEMO_SECONDS_PER_SAMPLE` | `2` | Wall-clock seconds between replayed readings |
 | `DEMO_LIVE_FROM` | `2022-11-04T00:00:00` | Readings before this are preloaded each loop |
 | `MQTT_HOST` / `MQTT_PORT` / `MQTT_TOPIC` | `localhost` / `1883` / `windfarm/av7/scada/10min` | Broker connection |
@@ -74,14 +74,14 @@ Interactive documentation is at `/docs` on a running backend.
 
 The hosted demo runs the backend container on Render (free tier, sleeps when
 idle), the database on Neon (PostgreSQL) and the dashboard on Netlify. The
-backend needs `DATABASE_URL` and `FRONTEND_URL`; `INGEST_MODE` defaults to
-`demo`. The frontend needs `VITE_API_URL` at build time.
+backend needs `DATABASE_URL`, `FRONTEND_URL` and `INGEST_MODE=demo` (the
+default is `none`, because demo mode wipes the database on every loop). The frontend needs `VITE_API_URL` at build time.
 
 ## Tests and CI
 
 `.github/workflows/ci.yml` runs on every push and pull request to `main`:
 
-- **Backend:** 39 pytest tests covering the reference curve, detector rules, restart safety, API behaviour, duplicates and ordering.
+- **Backend:** 50 pytest tests covering the reference curve, detector rules, restart safety, API behaviour, duplicates, ordering and MQTT acknowledgement, run on both SQLite and PostgreSQL.
 - **Evaluation:** reruns the full evaluation on the committed dataset and fails if any result differs from `evaluation/results/metrics.json`.
-- **Frontend:** ESLint and a production build, which includes type checking.
+- **Frontend:** ESLint, Vitest unit tests and a production build, which includes type checking.
 - **Docker:** builds the backend image.

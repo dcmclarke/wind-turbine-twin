@@ -83,13 +83,39 @@ def test_malformed_reading_is_rejected(client):
     assert r.status_code == 422
 
 
-def test_http_ingest_can_be_disabled(client, monkeypatch):
-    from app.config import get_settings
-    from app.routes import readings
+def test_timezone_aware_timestamp_is_rejected(client):
+    """Stored timestamps are naive turbine time; an aware one can't be compared with them."""
+    for ts in ("2022-12-17T16:00:00+00:00", "2022-12-17T16:00:00Z"):
+        r = client.post("/api/readings", json={"timestamp": ts, "wind_mean": WIND, "power_mean": 1.5})
+        assert r.status_code == 422
 
-    locked = get_settings().__class__(**{**get_settings().__dict__, "allow_http_ingest": False})
-    monkeypatch.setattr(readings, "get_settings", lambda: locked)
-    assert post(client, 0, power=1.5).status_code == 403
+
+def test_aware_timestamp_after_naive_one_is_rejected_not_a_crash(client):
+    post(client, 0, power=1.5)
+    aware = (START + STEP).isoformat() + "+00:00"
+    r = client.post("/api/readings", json={"timestamp": aware, "wind_mean": WIND, "power_mean": 1.5})
+    assert r.status_code == 422
+
+
+def test_rejected_aware_reading_does_not_poison_detector_state(client):
+    """An aware first reading used to be saved in the detector's state and break every later one."""
+    aware = START.isoformat() + "+00:00"
+    client.post("/api/readings", json={"timestamp": aware, "wind_mean": WIND, "power_mean": 1.5})
+    assert post(client, 1, power=1.5).status_code == 201
+
+
+def test_http_ingest_can_be_disabled(client):
+    from dataclasses import replace
+
+    from app.config import get_settings
+    from main import app
+
+    locked = replace(get_settings(), allow_http_ingest=False)
+    app.dependency_overrides[get_settings] = lambda: locked
+    try:
+        assert post(client, 0, power=1.5).status_code == 403
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_reading_outside_reference_range_is_not_judged(client):
@@ -111,3 +137,21 @@ def test_reference_curve_endpoint(client):
     assert len(body["bins"]) >= 3
     assert body["wind_range"][0] < body["wind_range"][1]
     assert body["stop_samples"] == 6
+
+
+def test_duplicate_stored_by_another_worker_meanwhile_is_a_409(client, monkeypatch):
+    """The lock in ingest() is per process; the database's unique timestamp must catch the rest."""
+    from app.database import SessionLocal
+    from app.models import Reading
+    from app.services import ingest
+
+    real_apply = ingest._Ingestor.apply
+
+    def other_worker_got_there_first(self, data, source):
+        with SessionLocal() as other:
+            other.add(Reading(timestamp=data.timestamp, wind_mean=WIND, power_mean=1.5, flag="normal", source="http"))
+            other.commit()
+        return real_apply(self, data, source)
+
+    monkeypatch.setattr(ingest._Ingestor, "apply", other_worker_got_there_first)
+    assert post(client, 0, power=1.5).status_code == 409

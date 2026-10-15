@@ -4,6 +4,7 @@ what is feeding the detector.
 """
 
 from app.config import Settings
+from app.detector.t19 import SAMPLE_LENGTH
 from app.schemas import FeedOut
 
 running = None  # DemoFeed, MqttFeed or None
@@ -28,11 +29,16 @@ def stop() -> None:
         running = None
 
 
+def ready() -> bool:
+    """False until the MQTT feed's subscription is confirmed; other feeds are ready at once."""
+    return getattr(running, "subscribed", True)
+
+
 def describe(settings: Settings) -> FeedOut:
     feed = FeedOut(mode=settings.ingest_mode)
     if settings.ingest_mode == "demo" and running is not None:
         feed.seconds_per_sample = running.interval
-        feed.speedup = round(600 / running.interval)
+        feed.speedup = round(SAMPLE_LENGTH.total_seconds() / running.interval)
         feed.loop = running.loop
         feed.position = running.position
         feed.total = running.total

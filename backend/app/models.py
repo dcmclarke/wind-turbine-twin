@@ -9,7 +9,7 @@ dropped.
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -59,8 +59,6 @@ class IceEvent(Base):
     samples: Mapped[int] = mapped_column(Integer)
     energy_lost_kwh: Mapped[float] = mapped_column(Float)
     mean_wind: Mapped[float] = mapped_column(Float)
-
-    readings: Mapped[list[Reading]] = relationship()
 
     @property
     def is_active(self) -> bool:

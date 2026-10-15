@@ -67,7 +67,9 @@ def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"edge-{TURBINE_ID}")
     client.connect(args.host, args.port)
     client.loop_start()
-    time.sleep(3)  # give the backend a moment to subscribe on a fresh start
+    # No wait for the backend here: Docker Compose starts this script only once
+    # the backend's /health is OK, which it is only after its MQTT subscription
+    # is confirmed. Run by hand, start the backend first.
 
     print(f"Publishing {len(rows)} readings to {args.topic} every {args.seconds_per_sample} s")
     for i, row in enumerate(rows, start=1):

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/ci.yml/badge.svg)](https://github.com/dcmclarke/wind-turbine-twin/actions/workflows/ci.yml)
 
-Detects ice on a wind turbine's blades from the turbine's own SCADA data,
+Flags likely ice on a wind turbine's blades from the turbine's own SCADA data,
 using the IEA Wind Task 19 method, and runs it as an IoT pipeline: edge
 gateway → MQTT → FastAPI → PostgreSQL → React dashboard. It is built on real
 data from ETH Zurich's Aventa AV-7 research turbine, which iced up in
@@ -19,16 +19,20 @@ takes up to a minute.
 Evaluated on 11 clean-blade days and the 17–20 December 2022 icing period.
 Each clean day was scored against a reference curve fitted without that day.
 The comparison is a rule that raises an alarm whenever a 10-minute reading
-shows zero output while the wind is above cut-in.
+shows zero output while the wind is above cut-in. Both are scored on the same
+190 clean readings: those inside the reference curve's wind range, the only
+ones the detector judges. (On every clean reading above cut-in, the rule
+raises 12 false events.)
 
 |                                        | Task 19 detector              | Zero-output rule          |
 | :------------------------------------- | :---------------------------- | :------------------------ |
 | Finds the December icing event         | Yes, 60 min after it begins   | Yes, 10 min after         |
-| False events on 11 clean days          | **6, all on one day**         | 12, spread over 6 days    |
-| Clean days with no false event         | **10 of 11**                  | 5 of 11                   |
+| False events on 11 clean days          | **6, all on one day**         | 10, spread over 5 days    |
+| Clean days with no false event         | **7 of 8**                    | 3 of 8                    |
 | Energy lost during the icing event     | 12.7 kWh against expected     | not estimated             |
 
-The hour's delay is by design: Task 19 wants an hour of evidence before it
+Three clean days had no readings in the reference range, so the clean-day
+row counts the eight days that had any. The hour's delay is by design: Task 19 wants an hour of evidence before it
 calls a stop. The six false events all fell on 20 June 2022, when the turbine
 ran at about 70% of its expected output all day. That was a real shortfall,
 and the data doesn't say what caused it. It was June, so a working
@@ -67,8 +71,8 @@ flowchart LR
 On the pipeline side:
 
 - **One transaction per reading.** Each reading, any event it opens or closes, and the detector's memory are written in the same database transaction, so a restart resumes exactly where it stopped.
-- **Duplicates are harmless.** MQTT QoS 1 can deliver a message twice; readings are unique by timestamp, so a repeat is ignored.
-- **Nothing lost while the backend is down.** With a persistent session, the broker holds readings until the backend reconnects. This was tested by stopping the backend mid-stream: no gaps.
+- **Duplicates are ignored.** MQTT QoS 1 can deliver a message twice; readings are unique by timestamp in the database, so a repeat is rejected, even if two backend processes receive it at once.
+- **Readings wait while the backend or database is down.** With a persistent session, the broker holds readings (on disk) until the backend reconnects, and acknowledges each one only once it is saved. If the database is unreachable, the backend retries the same reading until it is back. Stopping the backend or PostgreSQL mid-stream in Docker Compose left no gaps. Limits: Mosquitto holds at most 1,000 queued messages per client by default, and a reading that fails for any other reason is logged and not stored.
 
 The hosted demo has no MQTT broker, so it replays the data in-process through
 the same ingestion code. `docker compose up` runs the full MQTT pipeline.
@@ -102,12 +106,14 @@ http://localhost:8000/docs. The edge publisher streams the dataset over MQTT
 at one reading every 2 seconds. Readings already in the database are skipped
 on a second run; `docker compose down -v` starts fresh.
 
-**Backend on its own** (Python 3.12+; SQLite by default, replaying the demo feed in-process):
+**Backend on its own** (Python 3.12+; SQLite by default). `INGEST_MODE=demo`
+replays the dataset in-process, as the hosted demo does; it deletes all
+readings and events at the start of every loop, so it is off by default.
 
 ```sh
 cd backend
 pip install -r requirements-dev.txt
-uvicorn main:app --reload
+INGEST_MODE=demo uvicorn main:app --reload
 pytest
 ```
 
